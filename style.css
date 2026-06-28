@@ -289,30 +289,30 @@ margin-left: auto;
 }
 
 .highlight-link {
-background:#27ae60;
-color: #fff !important;
-border-radius: 4px;
-font-weight: 600;
-padding: 14px 20px !important;
+	background:#27ae60;
+	color: #fff !important;
+	border-radius: 25px;
+	font-weight: 600;
+	padding: 14px 20px !important;
 }
 
 .highlight-link:hover {
-background:#219a52 !important;
-color: #fff !important;
+	background:#219a52 !important;
+	color: #fff !important;
 }
 
 .download-btn {
-background: #27ae60;
-color: #fff !important;
-border-radius: 4px;
-font-weight: 600;
-padding: 14px 20px !important;
-margin-left:10px;
+	background: #27ae60;
+	color: #fff !important;
+	border-radius: 25px;
+	font-weight: 600;
+	padding: 14px 20px !important;
+	margin-left:10px;
 }
 
 .download-btn:hover {
-background: #219a52 !important;
-color: #fff !important;
+	background: #219a52 !important;
+	color: #fff !important;
 }
 
 .topnav .icon {
@@ -1411,14 +1411,33 @@ background:rgba(0,0,0,0.6);
 overflow:auto;
 }
 .booking-modal-content{
-background:#fff;
+	background:#fff;
 margin:5% auto;
 padding:40px 30px;
 border-radius:12px;
 width:90%;
-max-width:480px;
+max-width:750px;
 position:relative;
 box-shadow:0 10px 40px rgba(0,0,0,0.3);
+}
+.booking-layout{
+display:flex;
+gap:30px;
+align-items:flex-start;
+}
+.booking-left{
+flex-shrink:0;
+}
+.booking-right{
+flex:1;
+min-width:0;
+}
+.booking-doctor-img{
+display:block;
+width:380px;
+height:500px;
+object-fit:cover;
+border-radius:8px;
 }
 .booking-close{
 position:absolute;
@@ -1433,7 +1452,7 @@ transition:0.3s;
 color:#000;
 }
 .booking-modal-content em{
-font-size:1em;
+	font-size:1em;
 }
 .booking-modal-content h1{
 margin:5px 0 10px;
