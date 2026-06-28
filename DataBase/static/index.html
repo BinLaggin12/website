@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Rental System</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>House Rental System</h1>
+    </header>
+
+    <div class="layout">
+        <main>
+            <section id="user-section" class="card">
+                <h2>User</h2>
+                <div id="user-info">
+                    <p class="muted">No user created yet.</p>
+                </div>
+                <button id="btn-create-user" class="btn primary">Create User</button>
+                <button id="btn-clear-user" class="btn secondary" style="display:none">Clear User</button>
+            </section>
+
+            <section id="house-section" class="card">
+                <h2>Houses</h2>
+                <div class="row">
+                    <button id="btn-create-house" class="btn primary">Create House</button>
+                </div>
+                <div id="houses-list"></div>
+
+                <hr>
+
+                <h3>Rent a House</h3>
+                <div class="form-row">
+                    <input type="text" id="input-rent-house-id" placeholder="House ID" class="input">
+                    <button id="btn-rent-house" class="btn primary">Rent</button>
+                </div>
+                <div id="rent-result"></div>
+
+                <hr>
+
+                <h3>Check Lock</h3>
+                <div class="form-row">
+                    <input type="text" id="input-lock-house-id" placeholder="House ID" class="input">
+                    <button id="btn-check-lock" class="btn secondary">Check Lock</button>
+                </div>
+                <div id="lock-result"></div>
+            </section>
+
+            <section id="rentals-section" class="card">
+                <div class="card-header">
+                    <h2>My Rentals</h2>
+                    <button id="btn-refresh-rentals" class="btn secondary">Refresh</button>
+                </div>
+                <div id="rentals-list"></div>
+            </section>
+
+            <section id="rental-detail-section" class="card" style="display:none">
+                <h2>Rental Detail</h2>
+                <div id="rental-detail"></div>
+            </section>
+        </main>
+
+        <aside class="sidebar">
+            <section class="card">
+                <h2>User Activity</h2>
+                <div class="hm-stats"><span id="user-hm-count">0</span> creations</div>
+                <div id="user-heatmap" class="heatmap"></div>
+                <div class="hm-legend">
+                    <span class="hm-cell hm-cell-user"></span>
+                    <span style="font-size:0.75rem;color:#666">User created</span>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>House Status</h2>
+                <div class="hm-stats"><span id="house-hm-total">0</span> total · <span id="house-hm-occ">0</span> occupied</div>
+                <div id="house-heatmap" class="heatmap"></div>
+                <div class="hm-legend">
+                    <span class="hm-cell hm-cell-occ"></span><span style="font-size:0.75rem;color:#666">Occupied</span>
+                    <span class="hm-cell hm-cell-free"></span><span style="font-size:0.75rem;color:#666">Available</span>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <div id="toast"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+services:
+  cas1:
+    image: cassandra:latest
+    container_name: cas1
+    hostname: cas1
+    environment:
+      - "MAX_HEAP_SIZE=1G"
+      - "HEAP_NEWSIZE=256M"
+    ports:
+      - 127.0.0.1:9042:9042
+
+  cas2:
+    image: cassandra:latest
+    container_name: cas2
+    hostname: cas2
+    environment:
+      - "MAX_HEAP_SIZE=1G"
+      - "HEAP_NEWSIZE=256M"
+      - "CASSANDRA_SEEDS=cas1"
+    ports:
+      - 127.0.0.2:9042:9042
+    depends_on:
+      - cas1
+
+  cas3:
+    image: cassandra:latest
+    container_name: cas3
+    hostname: cas3
+    environment:
+      - "MAX_HEAP_SIZE=1G"
+      - "HEAP_NEWSIZE=256M"
+      - "CASSANDRA_SEEDS=cas1"
+    ports:
+      - 127.0.0.3:9042:9042
+    depends_on:
+      - cas1
+
+  backend:
+    container_name: backend
+    hostname: backend
+    build:
+      dockerfile: ./Dockerfile.backend
+    depends_on:
+      - cas1

@@ -1,0 +1,50 @@
+### Seed doctors and tests
+POST http://127.0.0.1:8000/api/seed
+
+### List all doctors
+GET http://127.0.0.1:8000/api/doctors
+
+### List all tests
+GET http://127.0.0.1:8000/api/tests
+
+### Create a patient
+POST http://127.0.0.1:8000/api/patient/create
+Content-Type: application/json
+
+{
+"name": "John Doe",
+"phone": "+91-9876543210",
+"address": "123 Main Street, City"
+}
+
+### Get patient by phone
+GET http://127.0.0.1:8000/api/patient/phone/+91-9876543210
+
+### Book a test
+POST http://127.0.0.1:8000/api/booking/create
+Content-Type: application/json
+
+{
+"patient_name": "John Doe",
+"patient_phone": "+91-9876543210",
+"test_name": "CBC Test",
+"collection_address": "123 Main Street, City"
+}
+
+### Get booking by ID
+GET http://127.0.0.1:8000/api/booking/BOOKING_ID_HERE
+
+### List bookings by phone
+GET http://127.0.0.1:8000/api/bookings/+91-9876543210
+
+### Upload a report (admin/lab use)
+POST http://127.0.0.1:8000/api/report/create
+Content-Type: application/json
+
+{
+"booking_id": "BOOKING_ID_HERE",
+"results": "Hemoglobin: 14.5 g/dL\nWBC: 7,200 /uL\nRBC: 5.0 M/uL\nPlatelets: 250,000 /uL\n\nAll values are within normal range."
+}
+
+### Download report by booking ID
+GET http://127.0.0.1:8000/api/report/BOOKING_ID_HERE

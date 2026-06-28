@@ -1,0 +1,6 @@
+cassandra-driver
+fastapi
+uvicorn
+httpx
+matplotlib
+seaborn
