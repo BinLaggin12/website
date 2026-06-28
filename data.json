@@ -1,0 +1,79 @@
+{
+  "patients": [
+    {
+      "patient_id": "ac69-f9ce-d8b0",
+      "name": "faah",
+      "phone": "12345",
+      "address": "ojojo",
+      "created_at": "2026-06-28T07:46:04.252069"
+    }
+  ],
+  "bookings": [
+    {
+      "booking_id": "31f2-dab2-b33f",
+      "patient_id": "ac69-f9ce-d8b0",
+      "patient_name": "faah",
+      "patient_phone": "12345",
+      "test_name": "CBC Test",
+      "collection_address": "ojojo",
+      "status": "confirmed",
+      "created_at": "2026-06-28T07:46:04.252069"
+    }
+  ],
+  "reports": [
+    {
+      "report_id": "ebe7-5960-7b34",
+      "booking_id": "31f2-dab2-b33f",
+      "patient_id": "ac69-f9ce-d8b0",
+      "test_name": "CBC Test",
+      "results": "Test: CBC Test\nResult: Normal\nReference Range: As per clinical correlation\nRemarks: No significant abnormality detected.",
+      "generated_at": "2026-06-28T07:46:04.252069"
+    }
+  ],
+  "doctors": [
+    {
+      "doctor_id": "ab5a-3afb-45de",
+      "name": "Dr. M.A. Majid Adil",
+      "speciality": "UROLOGIST",
+      "qualifications": "MBBS, M.D, MDHM",
+      "bio": "Dr. Majid Adil is a highly skilled and experienced urologist affiliated with Unicus Diagnostics. With a passion for providing exceptional patient care, Dr. Adil has gained a reputation for his expertise in diagnosing and treating various urological conditions."
+    },
+    {
+      "doctor_id": "5812-7f99-fa79",
+      "name": "Dr. Shahana Sarwar",
+      "speciality": "MANAGING DIRECTOR",
+      "qualifications": "MBBS, M.D, MDHM",
+      "bio": "Dr. Shahana Sarwar is a highly accomplished individual serving as the Managing Director of Unicus Diagnostics. With her exceptional leadership skills and extensive expertise in the field of diagnostics, she has propelled Unicus Diagnostics to new heights of success and recognition."
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "2432-588e-d7d1",
+      "name": "Creatinine Test",
+      "price": 300,
+      "description": "Measures creatinine levels to assess kidney function.",
+      "category": "Pathology"
+    },
+    {
+      "test_id": "b6ca-2a47-0020",
+      "name": "CBC Test",
+      "price": 400,
+      "description": "Complete Blood Count \u2014 evaluates overall health and detects disorders.",
+      "category": "Pathology"
+    },
+    {
+      "test_id": "f5af-0729-0d93",
+      "name": "C Reactive Protein Test",
+      "price": 500,
+      "description": "Measures CRP levels to detect inflammation or infection.",
+      "category": "Pathology"
+    },
+    {
+      "test_id": "8f08-1ddc-f09c",
+      "name": "Blood Sugar",
+      "price": 200,
+      "description": "Measures glucose levels in the blood for diabetes screening.",
+      "category": "Pathology"
+    }
+  ]
+}

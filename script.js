@@ -1,3 +1,16 @@
+//SPLASH SCREEN
+window.addEventListener('load', function() {
+var splash = document.getElementById('splash');
+if (splash) {
+var duration = splash.getAttribute('data-duration');
+if (!duration) duration = 500;
+setTimeout(function() {
+splash.classList.add('fade-out');
+setTimeout(function() { splash.style.display = 'none'; }, 500);
+}, parseInt(duration));
+}
+});
+
 //NAVIGATION
 function myFunction() {
 var x = document.getElementById("myTopnav");

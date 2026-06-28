@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Book an Appointment - Unicus Diagnostics</title>
+<title>Book a Test - Unicus Diagnostics</title>
 
 <!--META TAGS-->
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
@@ -14,13 +14,23 @@
 <!--GOOGLE FONTS-->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400&display=swap" rel="stylesheet"> 
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+
+<!--FAVICON-->
+<link rel="icon" type="image/png" href="Unicus Diagnostics Logo.png">
 
 <!--EXTERNAL CSS-->
 <link rel="stylesheet" href="style.css">
 
 </head>
 <body>
+
+<!--SPLASH SCREEN-->
+<div id="splash" data-duration="10">
+<div class="splash-content">
+<img src="Unicus Diagnostics Logo.png" alt="Unicus Diagnostics">
+</div>
+</div>
 
 <!--HEADER-->
 <header>
@@ -44,7 +54,7 @@
 <div class="topnav" id="myTopnav">
 <a href="index.html" class="active">Home</a>
 <a href="specialities.html">Specialities</a>
-<a href="appointments.html" class="highlight-link">Book an Appointment</a>
+<a href="appointments.html" class="highlight-link">Book a Test</a>
 <a href="reports.html" class="download-btn">Download Report</a>
 <a href="contact.html">Contact us</a>
 <a href="javascript:void(0);" style="font-size:15px;" class="icon" onclick="myFunction()">&#9776;</a>
@@ -55,24 +65,22 @@
 <div class="appointment-page">
 <div class="appointment-card">
 <em>BOOK NOW</em>
-<h1>Schedule Your Appointment</h1>
+<h1>Schedule Your Test</h1>
 <p>Fill in your details and we'll get back to you within 24 hours.</p>
-<form>
+<form id="bookingForm">
 <input type="text" name="fname" placeholder="Full Name" maxlength="60" required />
-<input type="email" name="email" placeholder="Email Address" maxlength="100" required />
-<input type="tel" name="phone" placeholder="Phone Number" maxlength="15" required />
-<input type="date" name="date" required />
-<select name="department">
-<option value="">Select Department</option>
-<option value="urology">Urology</option>
-<option value="cardiology">Cardiology</option>
-<option value="orthopedics">Orthopedics</option>
-<option value="generaltreatment">General Treatment</option>
-<option value="laboratory">Laboratory Services</option>
+<input type="tel" name="phone" placeholder="Phone" maxlength="15" required />
+<select name="test" required>
+<option value="">Select Test</option>
+<option value="Creatinine Test">Creatinine Test</option>
+<option value="CBC Test">CBC Test</option>
+<option value="C Reactive Protein Test">C Reactive Protein Test</option>
+<option value="Blood Sugar">Blood Sugar</option>
 </select>
-<textarea name="message" placeholder="Any additional notes..." rows="4"></textarea>
-<button type="submit" class="btn2" style="width:100%;">BOOK APPOINTMENT</button>
+<textarea name="address" placeholder="Home Collection Address" rows="3" required></textarea>
+<button type="submit" class="btn2" style="width:100%;">BOOK A TEST</button>
 </form>
+<div id="bookingResult" style="display:none;margin-top:20px;padding:15px;background:#e8f5e9;border-radius:8px;color:#2e7d32;"></div>
 </div>
 </div>
 
@@ -122,5 +130,49 @@
 
 <!--JAVASCRIPT-->
 <script src="script.js"></script>
+<script>
+document.getElementById('bookingForm').addEventListener('submit', function(e) {
+e.preventDefault();
+var btn = this.querySelector('button');
+btn.disabled = true;
+btn.textContent = 'SUBMITTING...';
+var data = {
+patient_name: this.fname.value,
+patient_phone: this.phone.value,
+test_name: this.test.value,
+collection_address: this.address.value
+};
+fetch('/api/booking/create', {
+method: 'POST',
+headers: {'Content-Type': 'application/json'},
+body: JSON.stringify(data)
+})
+.then(function(r) { return r.json().then(function(data) { return {status: r.status, body: data}; }); })
+.then(function(res) {
+var result = document.getElementById('bookingResult');
+result.style.display = 'block';
+if (res.status >= 400) {
+result.style.background = '#fce4e4';
+result.style.color = '#c62828';
+result.innerHTML = '<strong>Error:</strong> ' + (res.body.error || 'Something went wrong');
+} else {
+result.style.background = '#e8f5e9';
+result.style.color = '#2e7d32';
+result.innerHTML = '<strong>Booking Confirmed!</strong><br>Booking ID: ' + res.body.booking_id + '<br>Test: ' + res.body.test_name + '<br>Status: ' + res.body.status;
+}
+btn.disabled = false;
+btn.textContent = 'BOOK A TEST';
+})
+.catch(function(err) {
+var result = document.getElementById('bookingResult');
+result.style.display = 'block';
+result.style.background = '#fce4e4';
+result.style.color = '#c62828';
+result.innerHTML = '<strong>Error submitting booking.</strong> Make sure the server is running at <strong>http://localhost:3000</strong> (not opened as a file).';
+btn.disabled = false;
+btn.textContent = 'BOOK A TEST';
+});
+});
+</script>
 </body>
 </html>
