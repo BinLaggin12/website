@@ -1,3 +1,13 @@
+import hashlib
+
+DEFAULT_ADMIN_USER = "admin"
+DEFAULT_ADMIN_PASS = "admin123"
+
+
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
 if __name__ == "__main__":
     from .database import Database
     from .api import create_fastapi_app
@@ -5,6 +15,8 @@ if __name__ == "__main__":
     database = Database()
     database.seed_doctors()
     database.seed_tests()
+    database.create_admin_user(DEFAULT_ADMIN_USER, _hash_password(DEFAULT_ADMIN_PASS))
     api = create_fastapi_app(database)
     import uvicorn
-    uvicorn.run(api, host="127.0.0.1", port=8000)
+    print(f"Unicus Diagnostics + Admin running at http://localhost:3000")
+    uvicorn.run(api, host="0.0.0.0", port=3000)

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Reports - Unicus Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="admin-header">
+    <div class="brand">
+        <span>Unicus Diagnostics — Admin</span>
+    </div>
+    <div class="user-info">
+        <span id="userDisplay"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+</div>
+<nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="bookings.html">Bookings</a>
+    <a href="reports.html" class="active">Reports</a>
+    <a href="patients.html">Patients</a>
+    <a href="tests.html">Tests</a>
+    <a href="doctors.html">Doctors</a>
+</nav>
+<div class="admin-content">
+    <div id="message"></div>
+    <div class="data-table-wrap">
+        <div class="table-header">
+            <h2>All Reports</h2>
+            <button class="btn-edit" onclick="openCreateModal()" style="padding:8px 16px;border:none;border-radius:6px;color:#fff;font-family:Merriweather,serif;cursor:pointer;">+ New Report</button>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Booking ID</th>
+                    <th>Test</th>
+                    <th>Results</th>
+                    <th>Generated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="reportsBody"></tbody>
+        </table>
+    </div>
+</div>
+<div class="modal-overlay" id="reportModal">
+    <div class="modal-box">
+        <h2 id="reportModalTitle">Create Report</h2>
+        <input type="hidden" id="editReportId">
+        <label>Booking ID</label>
+        <input type="text" id="reportBookingId" placeholder="e.g. a1b2-c3d4-e5f6">
+        <label>Results</label>
+        <textarea id="reportResults" placeholder="Enter test results..."></textarea>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('reportModal')">Cancel</button>
+            <button class="btn-success" onclick="saveReport()">Save</button>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+<script>
+requireAuth();
+document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+
+function loadReports() {
+    api('/reports').then(function(reports) {
+        var tbody = document.getElementById('reportsBody');
+        tbody.innerHTML = '';
+        reports.forEach(function(r) {
+            tbody.innerHTML +=
+                '<tr>' +
+                '<td>' + escapeHtml(r.booking_id) + '</td>' +
+                '<td>' + escapeHtml(r.test_name) + '</td>' +
+                '<td>' + escapeHtml((r.results || '').substring(0, 60)) + '...</td>' +
+                '<td>' + escapeHtml((r.generated_at || '').substring(0, 10)) + '</td>' +
+                '<td class="actions">' +
+                '<button class="btn-edit" onclick="openEditModal(\'' + r.report_id + '\', \'' + escapeHtml(r.results) + '\')">Edit</button>' +
+                '</td>' +
+                '</tr>';
+        });
+    });
+}
+
+function openCreateModal() {
+    document.getElementById('reportModalTitle').textContent = 'Create Report';
+    document.getElementById('editReportId').value = '';
+    document.getElementById('reportBookingId').value = '';
+    document.getElementById('reportResults').value = '';
+    document.getElementById('reportBookingId').style.display = 'block';
+    document.getElementById('reportModal').classList.add('show');
+}
+
+function openEditModal(reportId, results) {
+    document.getElementById('reportModalTitle').textContent = 'Edit Report';
+    document.getElementById('editReportId').value = reportId;
+    document.getElementById('reportBookingId').value = '';
+    document.getElementById('reportBookingId').style.display = 'none';
+    document.getElementById('reportResults').value = results;
+    document.getElementById('reportModal').classList.add('show');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+function saveReport() {
+    var reportId = document.getElementById('editReportId').value;
+    var bookingId = document.getElementById('reportBookingId').value;
+    var results = document.getElementById('reportResults').value;
+
+    if (reportId) {
+        api('/report/' + reportId, 'PUT', {booking_id: '', results: results}).then(function() {
+            showMessage('Report updated');
+            closeModal('reportModal');
+            loadReports();
+        });
+    } else {
+        api('/report/create', 'POST', {booking_id: bookingId, results: results}).then(function() {
+            showMessage('Report created');
+            closeModal('reportModal');
+            loadReports();
+        });
+    }
+}
+
+function logout() {
+    api('/logout', 'POST').then(function() {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_username');
+        window.location.href = 'login.html';
+    });
+}
+
+loadReports();
+</script>
+</body>
+</html>

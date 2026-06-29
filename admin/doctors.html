@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Doctors - Unicus Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="admin-header">
+    <div class="brand">
+        <span>Unicus Diagnostics — Admin</span>
+    </div>
+    <div class="user-info">
+        <span id="userDisplay"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+</div>
+<nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="bookings.html">Bookings</a>
+    <a href="reports.html">Reports</a>
+    <a href="patients.html">Patients</a>
+    <a href="tests.html">Tests</a>
+    <a href="doctors.html" class="active">Doctors</a>
+</nav>
+<div class="admin-content">
+    <div id="message"></div>
+    <div class="data-table-wrap">
+        <div class="table-header">
+            <h2>Doctors</h2>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Speciality</th>
+                    <th>Qualifications</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="doctorsBody"></tbody>
+        </table>
+    </div>
+</div>
+<div class="modal-overlay" id="doctorModal">
+    <div class="modal-box">
+        <h2>Edit Doctor</h2>
+        <input type="hidden" id="editDoctorId">
+        <label>Name</label>
+        <input type="text" id="editDoctorName">
+        <label>Speciality</label>
+        <input type="text" id="editDoctorSpeciality">
+        <label>Qualifications</label>
+        <input type="text" id="editDoctorQuals">
+        <label>Bio</label>
+        <textarea id="editDoctorBio"></textarea>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('doctorModal')">Cancel</button>
+            <button class="btn-success" onclick="saveDoctor()">Save</button>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+<script>
+requireAuth();
+document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+
+function loadDoctors() {
+    fetch('/api/doctors').then(function(r) { return r.json(); }).then(function(doctors) {
+        var tbody = document.getElementById('doctorsBody');
+        tbody.innerHTML = '';
+        doctors.forEach(function(d) {
+            tbody.innerHTML +=
+                '<tr>' +
+                '<td>' + escapeHtml(d.name) + '</td>' +
+                '<td>' + escapeHtml(d.speciality) + '</td>' +
+                '<td>' + escapeHtml(d.qualifications) + '</td>' +
+                '<td class="actions">' +
+                '<button class="btn-edit" onclick="openDoctorModal(\'' + d.doctor_id + '\', \'' + escapeHtml(d.name) + '\', \'' + escapeHtml(d.speciality) + '\', \'' + escapeHtml(d.qualifications) + '\', \'' + escapeHtml(d.bio) + '\')">Edit</button>' +
+                '</td>' +
+                '</tr>';
+        });
+    });
+}
+
+function openDoctorModal(id, name, speciality, quals, bio) {
+    document.getElementById('editDoctorId').value = id;
+    document.getElementById('editDoctorName').value = name;
+    document.getElementById('editDoctorSpeciality').value = speciality;
+    document.getElementById('editDoctorQuals').value = quals;
+    document.getElementById('editDoctorBio').value = bio;
+    document.getElementById('doctorModal').classList.add('show');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+function saveDoctor() {
+    var id = document.getElementById('editDoctorId').value;
+    api('/doctor/' + id, 'PUT', {
+        name: document.getElementById('editDoctorName').value,
+        speciality: document.getElementById('editDoctorSpeciality').value,
+        qualifications: document.getElementById('editDoctorQuals').value,
+        bio: document.getElementById('editDoctorBio').value
+    }).then(function() {
+        showMessage('Doctor updated');
+        closeModal('doctorModal');
+        loadDoctors();
+    });
+}
+
+function logout() {
+    api('/logout', 'POST').then(function() {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_username');
+        window.location.href = 'login.html';
+    });
+}
+
+loadDoctors();
+</script>
+</body>
+</html>

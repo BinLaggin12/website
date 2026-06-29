@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dashboard - Unicus Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="admin-header">
+    <div class="brand">
+        <span>Unicus Diagnostics — Admin</span>
+    </div>
+    <div class="user-info">
+        <span id="userDisplay"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+</div>
+<nav class="admin-nav">
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="bookings.html">Bookings</a>
+    <a href="reports.html">Reports</a>
+    <a href="patients.html">Patients</a>
+    <a href="tests.html">Tests</a>
+    <a href="doctors.html">Doctors</a>
+</nav>
+<div class="admin-content">
+    <div class="dashboard-cards" id="dashboardCards">
+        <div class="dashboard-card">
+            <div class="number" id="totalPatients">—</div>
+            <div class="label">Total Patients</div>
+        </div>
+        <div class="dashboard-card">
+            <div class="number" id="totalBookings">—</div>
+            <div class="label">Total Bookings</div>
+        </div>
+        <div class="dashboard-card">
+            <div class="number" id="todaysBookings">—</div>
+            <div class="label">Today's Bookings</div>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+<script>
+requireAuth();
+document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+
+function loadDashboard() {
+    api('/dashboard').then(function(d) {
+        document.getElementById('totalPatients').textContent = d.total_patients;
+        document.getElementById('totalBookings').textContent = d.total_bookings;
+        document.getElementById('todaysBookings').textContent = d.todays_bookings;
+    });
+}
+
+function logout() {
+    api('/logout', 'POST').then(function() {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_username');
+        window.location.href = 'login.html';
+    });
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

@@ -192,6 +192,51 @@ class Database:
                 generated_at TIMESTAMP
             )
         """)
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                username TEXT PRIMARY KEY,
+                password_hash TEXT,
+                role TEXT,
+                created_at TIMESTAMP
+            )
+        """)
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS all_bookings (
+                partition int,
+                created_at timestamp,
+                booking_id UUID,
+                patient_id UUID,
+                patient_name TEXT,
+                patient_phone TEXT,
+                test_name TEXT,
+                collection_address TEXT,
+                status TEXT,
+                PRIMARY KEY ((partition), created_at, booking_id)
+            ) WITH CLUSTERING ORDER BY (created_at DESC)
+        """)
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS all_patients (
+                partition int,
+                created_at timestamp,
+                patient_id UUID,
+                name TEXT,
+                phone TEXT,
+                address TEXT,
+                PRIMARY KEY ((partition), created_at, patient_id)
+            ) WITH CLUSTERING ORDER BY (created_at DESC)
+        """)
+        self._execute("""
+            CREATE TABLE IF NOT EXISTS all_reports (
+                partition int,
+                generated_at timestamp,
+                report_id UUID,
+                booking_id UUID,
+                patient_id UUID,
+                test_name TEXT,
+                results TEXT,
+                PRIMARY KEY ((partition), generated_at, report_id)
+            ) WITH CLUSTERING ORDER BY (generated_at DESC)
+        """)
 
     def _prepare_statements(self):
         p = self.prepared
@@ -257,6 +302,10 @@ class Database:
         now = datetime.utcnow()
         self.session.execute(self.prepared.patient_insert, [patient_id, name, phone, address, now])
         self.session.execute(self.prepared.patient_by_phone_insert, [phone, patient_id, name, address, now])
+        self.session.execute(
+            "INSERT INTO all_patients (partition, created_at, patient_id, name, phone, address) VALUES (0, %s, %s, %s, %s, %s)",
+            [now, patient_id, name, phone, address]
+        )
         return Patient(patient_id=patient_id, name=name, phone=phone, address=address, created_at=str(now))
 
     def get_patient(self, patient_id: str) -> Patient | None:
@@ -277,15 +326,20 @@ class Database:
         booking_id = uuid.uuid4()
         now = datetime.utcnow()
         status = "confirmed"
+        pid = uuid.UUID(patient_id)
         self.session.execute(self.prepared.booking_insert, [
-            booking_id, uuid.UUID(patient_id), patient_name, patient_phone,
+            booking_id, pid, patient_name, patient_phone,
             test_name, collection_address, status, now
         ])
         self.session.execute(self.prepared.bookings_by_phone_insert, [
             patient_phone, booking_id, patient_name, test_name, status, now
         ])
+        self.session.execute(
+            "INSERT INTO all_bookings (partition, created_at, booking_id, patient_id, patient_name, patient_phone, test_name, collection_address, status) VALUES (0, %s, %s, %s, %s, %s, %s, %s, %s)",
+            [now, booking_id, pid, patient_name, patient_phone, test_name, collection_address, status]
+        )
         return Booking(
-            booking_id=booking_id, patient_id=uuid.UUID(patient_id),
+            booking_id=booking_id, patient_id=pid,
             patient_name=patient_name, patient_phone=patient_phone,
             test_name=test_name, collection_address=collection_address,
             status=status, created_at=str(now)
@@ -341,9 +395,15 @@ class Database:
     def create_report(self, booking_id: str, patient_id: str, test_name: str, results: str) -> Report:
         report_id = uuid.uuid4()
         now = datetime.utcnow()
-        self.session.execute(self.prepared.report_insert, [report_id, uuid.UUID(booking_id), uuid.UUID(patient_id), test_name, results, now])
-        self.session.execute(self.prepared.report_by_booking_insert, [uuid.UUID(booking_id), report_id, uuid.UUID(patient_id), test_name, results, now])
-        return Report(report_id=report_id, booking_id=uuid.UUID(booking_id), patient_id=uuid.UUID(patient_id), test_name=test_name, results=results, generated_at=str(now))
+        bid = uuid.UUID(booking_id)
+        pid = uuid.UUID(patient_id)
+        self.session.execute(self.prepared.report_insert, [report_id, bid, pid, test_name, results, now])
+        self.session.execute(self.prepared.report_by_booking_insert, [bid, report_id, pid, test_name, results, now])
+        self.session.execute(
+            "INSERT INTO all_reports (partition, generated_at, report_id, booking_id, patient_id, test_name, results) VALUES (0, %s, %s, %s, %s, %s, %s)",
+            [now, report_id, bid, pid, test_name, results]
+        )
+        return Report(report_id=report_id, booking_id=bid, patient_id=pid, test_name=test_name, results=results, generated_at=str(now))
 
     def get_report_by_booking(self, booking_id: str) -> Report | None:
         rows = self.session.execute(self.prepared.report_by_booking, [uuid.UUID(booking_id)])
@@ -376,3 +436,114 @@ class Database:
         ]
         for name, price, description, category in tests:
             self.create_test(name, price, description, category)
+
+    # --- Admin operations ---
+
+    def create_admin_user(self, username: str, password_hash: str, role: str = "admin") -> bool:
+        existing = self.get_admin_user(username)
+        if existing:
+            return False
+        self.session.execute(
+            "INSERT INTO admin_users (username, password_hash, role, created_at) VALUES (%s, %s, %s, %s)",
+            (username, password_hash, role, datetime.utcnow())
+        )
+        return True
+
+    def get_admin_user(self, username: str):
+        rows = self.session.execute(
+            "SELECT username, password_hash, role, created_at FROM admin_users WHERE username = %s",
+            (username,)
+        )
+        for row in rows:
+            return {"username": row.username, "password_hash": row.password_hash, "role": row.role, "created_at": str(row.created_at)}
+        return None
+
+    def list_all_bookings(self):
+        rows = self.session.execute("SELECT * FROM all_bookings LIMIT 500")
+        return [
+            {
+                "booking_id": str(r.booking_id),
+                "patient_id": str(r.patient_id) if r.patient_id else "",
+                "patient_name": r.patient_name,
+                "patient_phone": r.patient_phone,
+                "test_name": r.test_name,
+                "collection_address": r.collection_address,
+                "status": r.status,
+                "created_at": str(r.created_at),
+            }
+            for r in rows
+        ]
+
+    def list_all_patients(self):
+        rows = self.session.execute("SELECT * FROM all_patients LIMIT 500")
+        return [
+            {
+                "patient_id": str(r.patient_id),
+                "name": r.name,
+                "phone": r.phone,
+                "address": r.address,
+                "created_at": str(r.created_at),
+            }
+            for r in rows
+        ]
+
+    def list_all_reports(self):
+        rows = self.session.execute("SELECT * FROM all_reports LIMIT 500")
+        return [
+            {
+                "report_id": str(r.report_id),
+                "booking_id": str(r.booking_id),
+                "patient_id": str(r.patient_id),
+                "test_name": r.test_name,
+                "results": r.results,
+                "generated_at": str(r.generated_at),
+            }
+            for r in rows
+        ]
+
+    def get_all_bookings_count(self) -> int:
+        for r in self.session.execute("SELECT COUNT(*) FROM all_bookings"):
+            return r.count
+        return 0
+
+    def get_all_patients_count(self) -> int:
+        for r in self.session.execute("SELECT COUNT(*) FROM all_patients"):
+            return r.count
+        return 0
+
+    def get_todays_bookings_count(self) -> int:
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        for r in self.session.execute(
+            "SELECT COUNT(*) FROM all_bookings WHERE partition = 0 AND created_at >= %s ALLOW FILTERING",
+            (today_start,)
+        ):
+            return r.count
+        return 0
+
+    def update_booking_status(self, booking_id: str, status: str):
+        bid = uuid.UUID(booking_id)
+        self.session.execute(
+            "UPDATE bookings SET status = %s WHERE booking_id = %s",
+            (status, bid)
+        )
+
+    def update_test(self, test_id: str, name: str, price: float, description: str, category: str):
+        tid = uuid.UUID(test_id)
+        self.session.execute(
+            "UPDATE tests SET name = %s, price = %s, description = %s, category = %s WHERE test_id = %s",
+            (name, price, description, category, tid)
+        )
+
+    def update_doctor(self, doctor_id: str, name: str, speciality: str, qualifications: str, bio: str):
+        did = uuid.UUID(doctor_id)
+        self.session.execute(
+            "UPDATE doctors SET name = %s, speciality = %s, qualifications = %s, bio = %s WHERE doctor_id = %s",
+            (name, speciality, qualifications, bio, did)
+        )
+
+    def update_report(self, report_id: str, results: str):
+        rid = uuid.UUID(report_id)
+        self.session.execute(
+            "UPDATE reports SET results = %s WHERE report_id = %s",
+            (results, rid)
+        )

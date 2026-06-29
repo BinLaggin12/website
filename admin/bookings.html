@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bookings - Unicus Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="admin-header">
+    <div class="brand">
+        <span>Unicus Diagnostics — Admin</span>
+    </div>
+    <div class="user-info">
+        <span id="userDisplay"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+</div>
+<nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="bookings.html" class="active">Bookings</a>
+    <a href="reports.html">Reports</a>
+    <a href="patients.html">Patients</a>
+    <a href="tests.html">Tests</a>
+    <a href="doctors.html">Doctors</a>
+</nav>
+<div class="admin-content">
+    <div id="message"></div>
+    <div class="data-table-wrap">
+        <div class="table-header">
+            <h2>All Bookings</h2>
+            <input type="text" id="searchInput" placeholder="Search by name or phone..." onkeyup="filterTable()">
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Phone</th>
+                    <th>Test</th>
+                    <th>Address</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="bookingsBody"></tbody>
+        </table>
+    </div>
+</div>
+<div class="modal-overlay" id="statusModal">
+    <div class="modal-box">
+        <h2>Update Booking Status</h2>
+        <input type="hidden" id="editBookingId">
+        <label>Status</label>
+        <select id="editStatus">
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+        </select>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('statusModal')">Cancel</button>
+            <button class="btn-success" onclick="saveStatus()">Save</button>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+<script>
+requireAuth();
+document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+
+function loadBookings() {
+    api('/bookings').then(function(bookings) {
+        var tbody = document.getElementById('bookingsBody');
+        tbody.innerHTML = '';
+        bookings.forEach(function(b) {
+            var statusClass = 'status-' + b.status;
+            tbody.innerHTML +=
+                '<tr>' +
+                '<td>' + escapeHtml(b.patient_name) + '</td>' +
+                '<td>' + escapeHtml(b.patient_phone) + '</td>' +
+                '<td>' + escapeHtml(b.test_name) + '</td>' +
+                '<td>' + escapeHtml(b.collection_address) + '</td>' +
+                '<td><span class="status ' + statusClass + '">' + escapeHtml(b.status) + '</span></td>' +
+                '<td>' + escapeHtml(b.created_at || '').substring(0, 10) + '</td>' +
+                '<td class="actions">' +
+                '<button class="btn-edit" onclick="openStatusModal(\'' + b.booking_id + '\', \'' + b.status + '\')">Status</button>' +
+                '</td>' +
+                '</tr>';
+        });
+    });
+}
+
+function filterTable() {
+    var input = document.getElementById('searchInput').value.toLowerCase();
+    var rows = document.querySelectorAll('#bookingsBody tr');
+    rows.forEach(function(row) {
+        var text = row.textContent.toLowerCase();
+        row.style.display = text.indexOf(input) > -1 ? '' : 'none';
+    });
+}
+
+function openStatusModal(bookingId, currentStatus) {
+    document.getElementById('editBookingId').value = bookingId;
+    document.getElementById('editStatus').value = currentStatus;
+    document.getElementById('statusModal').classList.add('show');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+function saveStatus() {
+    var bookingId = document.getElementById('editBookingId').value;
+    var status = document.getElementById('editStatus').value;
+    api('/booking/' + bookingId + '/status', 'PUT', {status: status}).then(function() {
+        showMessage('Booking status updated');
+        closeModal('statusModal');
+        loadBookings();
+    });
+}
+
+function logout() {
+    api('/logout', 'POST').then(function() {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_username');
+        window.location.href = 'login.html';
+    });
+}
+
+loadBookings();
+</script>
+</body>
+</html>

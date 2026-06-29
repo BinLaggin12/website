@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Tests - Unicus Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="admin-header">
+    <div class="brand">
+        <span>Unicus Diagnostics — Admin</span>
+    </div>
+    <div class="user-info">
+        <span id="userDisplay"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+</div>
+<nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="bookings.html">Bookings</a>
+    <a href="reports.html">Reports</a>
+    <a href="patients.html">Patients</a>
+    <a href="tests.html" class="active">Tests</a>
+    <a href="doctors.html">Doctors</a>
+</nav>
+<div class="admin-content">
+    <div id="message"></div>
+    <div class="data-table-wrap">
+        <div class="table-header">
+            <h2>Test Catalog</h2>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Price</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="testsBody"></tbody>
+        </table>
+    </div>
+</div>
+<div class="modal-overlay" id="testModal">
+    <div class="modal-box">
+        <h2>Edit Test</h2>
+        <input type="hidden" id="editTestId">
+        <label>Name</label>
+        <input type="text" id="editTestName">
+        <label>Price (₹)</label>
+        <input type="number" id="editTestPrice" step="0.01">
+        <label>Category</label>
+        <input type="text" id="editTestCategory">
+        <label>Description</label>
+        <textarea id="editTestDescription"></textarea>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('testModal')">Cancel</button>
+            <button class="btn-success" onclick="saveTest()">Save</button>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+<script>
+requireAuth();
+document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+
+function loadTests() {
+    fetch('/api/tests').then(function(r) { return r.json(); }).then(function(tests) {
+        var tbody = document.getElementById('testsBody');
+        tbody.innerHTML = '';
+        tests.forEach(function(t) {
+            tbody.innerHTML +=
+                '<tr>' +
+                '<td>' + escapeHtml(t.name) + '</td>' +
+                '<td>₹' + escapeHtml(String(t.price)) + '</td>' +
+                '<td>' + escapeHtml(t.category) + '</td>' +
+                '<td>' + escapeHtml(t.description) + '</td>' +
+                '<td class="actions">' +
+                '<button class="btn-edit" onclick="openTestModal(\'' + t.test_id + '\', \'' + escapeHtml(t.name) + '\', ' + t.price + ', \'' + escapeHtml(t.category) + '\', \'' + escapeHtml(t.description) + '\')">Edit</button>' +
+                '</td>' +
+                '</tr>';
+        });
+    });
+}
+
+function openTestModal(id, name, price, category, description) {
+    document.getElementById('editTestId').value = id;
+    document.getElementById('editTestName').value = name;
+    document.getElementById('editTestPrice').value = price;
+    document.getElementById('editTestCategory').value = category;
+    document.getElementById('editTestDescription').value = description;
+    document.getElementById('testModal').classList.add('show');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+function saveTest() {
+    var id = document.getElementById('editTestId').value;
+    api('/test/' + id, 'PUT', {
+        name: document.getElementById('editTestName').value,
+        price: parseFloat(document.getElementById('editTestPrice').value),
+        category: document.getElementById('editTestCategory').value,
+        description: document.getElementById('editTestDescription').value
+    }).then(function() {
+        showMessage('Test updated');
+        closeModal('testModal');
+        loadTests();
+    });
+}
+
+function logout() {
+    api('/logout', 'POST').then(function() {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_username');
+        window.location.href = 'login.html';
+    });
+}
+
+loadTests();
+</script>
+</body>
+</html>

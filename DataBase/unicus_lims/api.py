@@ -1,26 +1,47 @@
+import hashlib
 import os
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 
 from .database import Database
 from .schemas import (
     PatientCreate, PatientResponse,
     BookingCreate, BookingResponse,
+    BookingStatusUpdate,
     DoctorResponse, TestResponse,
     ReportCreate, ReportResponse,
+    AdminLogin, AdminTokenResponse,
+    AdminDashboardResponse,
+    DoctorUpdate, TestUpdate,
+    AdminBookingStatusUpdate, AdminReportCreate,
 )
 
 
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+
+ADMIN_TOKENS: dict[str, str] = {}
+
+
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def _static_file_response(path: str):
+    full = ROOT_DIR / path
+    if full.exists() and full.is_file():
+        return FileResponse(str(full))
+    full = ROOT_DIR / "index.html"
+    if full.exists():
+        return FileResponse(str(full))
+    raise HTTPException(404, "Not found")
 
 
 def create_fastapi_app(database: Database) -> FastAPI:
-    app = FastAPI(title="Unicus Diagnostics LIMS", version="1.0.0")
+    app = FastAPI(title="Unicus Diagnostics", version="2.0.0")
 
     app.add_middleware(
         CORSMiddleware,
@@ -32,13 +53,106 @@ def create_fastapi_app(database: Database) -> FastAPI:
 
     app.state.database = database
 
-    # --- Static files ---
-    if STATIC_DIR.exists():
-        app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    # --- Auth helpers ---
 
-        @app.get("/")
-        async def serve_index():
-            return FileResponse(str(STATIC_DIR / "index.html"))
+    def require_admin(authorization: str | None = Header(None)):
+        if not authorization:
+            raise HTTPException(401, "Unauthorized")
+        token = authorization.replace("Bearer ", "")
+        if token not in ADMIN_TOKENS:
+            raise HTTPException(401, "Invalid token")
+        return ADMIN_TOKENS[token]
+
+    # --- Auth endpoints ---
+
+    @app.post("/api/admin/login")
+    def admin_login(body: AdminLogin):
+        user = database.get_admin_user(body.username)
+        if not user:
+            raise HTTPException(401, "Invalid credentials")
+        if user["password_hash"] != _hash_password(body.password):
+            raise HTTPException(401, "Invalid credentials")
+        token = str(uuid.uuid4())
+        ADMIN_TOKENS[token] = body.username
+        return AdminTokenResponse(token=token, username=body.username, role=user["role"])
+
+    @app.post("/api/admin/logout")
+    def admin_logout(authorization: str | None = Header(None)):
+        if authorization:
+            token = authorization.replace("Bearer ", "")
+            ADMIN_TOKENS.pop(token, None)
+        return {"status": "ok"}
+
+    # --- Admin dashboard ---
+
+    @app.get("/api/admin/dashboard")
+    def admin_dashboard(_=Depends(require_admin)):
+        return AdminDashboardResponse(
+            total_patients=database.get_all_patients_count(),
+            total_bookings=database.get_all_bookings_count(),
+            todays_bookings=database.get_todays_bookings_count(),
+        )
+
+    # --- Admin patient list ---
+
+    @app.get("/api/admin/patients")
+    def admin_list_patients(_=Depends(require_admin)):
+        return database.list_all_patients()
+
+    # --- Admin booking list & update ---
+
+    @app.get("/api/admin/bookings")
+    def admin_list_bookings(_=Depends(require_admin)):
+        return database.list_all_bookings()
+
+    @app.put("/api/admin/booking/{booking_id}/status")
+    def admin_update_booking_status(booking_id: str, body: AdminBookingStatusUpdate, _=Depends(require_admin)):
+        database.update_booking_status(booking_id, body.status)
+        return {"status": "ok"}
+
+    # --- Admin reports ---
+
+    @app.get("/api/admin/reports")
+    def admin_list_reports(_=Depends(require_admin)):
+        return database.list_all_reports()
+
+    @app.post("/api/admin/report/create")
+    def admin_create_report(body: AdminReportCreate, _=Depends(require_admin)):
+        booking = database.get_booking(body.booking_id)
+        if not booking:
+            raise HTTPException(404, "Booking not found")
+        report = database.create_report(
+            body.booking_id,
+            str(booking.patient_id),
+            booking.test_name,
+            body.results,
+        )
+        return {
+            "report_id": str(report.report_id),
+            "booking_id": str(report.booking_id),
+            "test_name": report.test_name,
+            "results": report.results,
+            "generated_at": report.generated_at,
+        }
+
+    @app.put("/api/admin/report/{report_id}")
+    def admin_update_report(report_id: str, body: ReportCreate, _=Depends(require_admin)):
+        database.update_report(report_id, body.results)
+        return {"status": "ok"}
+
+    # --- Admin doctors ---
+
+    @app.put("/api/admin/doctor/{doctor_id}")
+    def admin_update_doctor(doctor_id: str, body: DoctorUpdate, _=Depends(require_admin)):
+        database.update_doctor(doctor_id, body.name, body.speciality, body.qualifications, body.bio)
+        return {"status": "ok"}
+
+    # --- Admin tests ---
+
+    @app.put("/api/admin/test/{test_id}")
+    def admin_update_test(test_id: str, body: TestUpdate, _=Depends(require_admin)):
+        database.update_test(test_id, body.name, body.price, body.description, body.category)
+        return {"status": "ok"}
 
     # --- Patient endpoints ---
 
@@ -62,9 +176,9 @@ def create_fastapi_app(database: Database) -> FastAPI:
             created_at=patient.created_at,
         )
 
-    @app.get("/api/patient/{patient_id}", response_model=PatientResponse)
-    def get_patient(patient_id: str):
-        patient = database.get_patient(patient_id)
+    @app.get("/api/patient/phone/{phone}", response_model=PatientResponse)
+    def get_patient_by_phone(phone: str):
+        patient = database.get_patient_by_phone(phone)
         if not patient:
             raise HTTPException(404, "Patient not found")
         return PatientResponse(
@@ -75,9 +189,9 @@ def create_fastapi_app(database: Database) -> FastAPI:
             created_at=patient.created_at,
         )
 
-    @app.get("/api/patient/phone/{phone}", response_model=PatientResponse)
-    def get_patient_by_phone(phone: str):
-        patient = database.get_patient_by_phone(phone)
+    @app.get("/api/patient/{patient_id}", response_model=PatientResponse)
+    def get_patient(patient_id: str):
+        patient = database.get_patient(patient_id)
         if not patient:
             raise HTTPException(404, "Patient not found")
         return PatientResponse(
@@ -214,12 +328,24 @@ def create_fastapi_app(database: Database) -> FastAPI:
             generated_at=report.generated_at,
         )
 
-    # --- Seed endpoints ---
+    # --- Seed ---
 
     @app.post("/api/seed")
     def seed_data():
         database.seed_doctors()
         database.seed_tests()
         return {"status": "ok", "message": "Doctors and tests seeded"}
+
+    # --- Static file serving (catch-all, must be last) ---
+
+    @app.get("/{path:path}")
+    def serve_static(path: str):
+        full = ROOT_DIR / path
+        if full.exists() and full.is_file():
+            return FileResponse(str(full))
+        idx = ROOT_DIR / "index.html"
+        if idx.exists():
+            return FileResponse(str(idx))
+        raise HTTPException(404, "Not found")
 
     return app

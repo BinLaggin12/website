@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Login - Unicus Diagnostics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="login-page">
+    <div class="login-card">
+        <div class="logo">
+            <h1>Unicus Diagnostics</h1>
+            <em>Admin Portal</em>
+        </div>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Username" required autofocus>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">SIGN IN</button>
+            <div class="login-error" id="loginError">Invalid credentials</div>
+        </form>
+    </div>
+</div>
+<script>
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var btn = this.querySelector('button');
+    btn.disabled = true;
+    btn.textContent = 'SIGNING IN...';
+    fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        })
+    })
+    .then(function(r) {
+        return r.json().then(function(d) { return {status: r.status, body: d}; });
+    })
+    .then(function(res) {
+        if (res.status >= 400) {
+            document.getElementById('loginError').style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'SIGN IN';
+            return;
+        }
+        localStorage.setItem('admin_token', res.body.token);
+        localStorage.setItem('admin_username', res.body.username);
+        window.location.href = 'dashboard.html';
+    })
+    .catch(function() {
+        document.getElementById('loginError').textContent = 'Server unreachable';
+        document.getElementById('loginError').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'SIGN IN';
+    });
+});
+</script>
+</body>
+</html>

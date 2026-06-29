@@ -1,7 +1,10 @@
 @echo off
-cd /d "C:\Users\write\OneDrive\Documents\Website-Project"
-start /B python server.py
-timeout /t 2 >nul
-start http://localhost:3000
-echo Server started at http://localhost:3000
+cd /d %~dp0
+echo Starting Cassandra...
+docker compose -f DataBase\docker-compose.unicus.yml up -d cassandra
+echo Waiting 30s for Cassandra to be ready...
+timeout /t 30 /nobreak >nul
+echo Starting Unicus Backend...
+cd DataBase
+python -m unicus_lims
 pause
