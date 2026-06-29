@@ -944,7 +944,12 @@ margin:10px 0;
 width:100%;
 padding:10vh 0;
 display:flex;
+flex-wrap:wrap;
 justify-content:center;
+}
+.doctor-profile-header{
+width:100%;
+text-align:center;
 }
 
 .doctor-cards{
@@ -1476,7 +1481,521 @@ transition:0.3s;
 box-sizing:border-box;
 }
 .booking-modal-content input:focus,.booking-modal-content select:focus,.booking-modal-content textarea:focus{
-border-color:#167ce9;
+	border-color:#167ce9;
 }
+
+
+/*=========================================
+  MOBILE BOTTOM NAVIGATION BAR
+  =========================================
+  Only shows on small phone screens (≤480px).
+  Replaces the desktop topnav hamburger menu
+  with a fixed glass-effect tab bar at the
+  bottom of the screen.
+=========================================*/
+
+/* Hidden by default on desktop/tablet - only shown at ≤480px */
+.mobile-bottom-nav {
+  display: none;
+}
+
+
+/*=========================================
+  FLOATING WHATSAPP BUTTON (all screen sizes)
+  Fixed green bubble in the bottom-right
+  corner. On phones it shifts up above the
+  bottom nav bar.
+=========================================*/
+.whatsapp-float {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  z-index: 9500;
+  width: 56px;
+  height: 56px;
+  background: #25d366;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  color: #fff;
+}
+.whatsapp-float:hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 25px rgba(37, 211, 102, 0.5);
+}
+.whatsapp-float:active {
+  transform: scale(0.92);
+  box-shadow: 0 3px 10px rgba(37, 211, 102, 0.3);
+}
+.whatsapp-float svg {
+  width: 28px;
+  height: 28px;
+  fill: #fff;
+}
+
+
+@media (max-width: 480px) {
+
+  /*
+    Hide the desktop hamburger navigation.
+    The banner/logo above it still shows.
+  */
+  .topnav {
+    display: none !important;
+  }
+
+  /*
+    Push page content up so it isn't hidden
+    behind the fixed bottom bar.
+  */
+  body {
+    padding-bottom: 75px;
+  }
+
+  /*
+    MAIN BOTTOM NAV CONTAINER
+    --------------------------
+    Fixed to the bottom edge of the screen.
+    Uses a frosted-glass effect with heavy
+    blur and layered shadows for depth.
+  */
+  .mobile-bottom-nav {
+    /* Show on phone screens (override the default display:none) */
+    display: block;
+    /* Take full width at the very bottom */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9000;            /* below splash/modal (9999) */
+
+    /* Inner padding - extra bottom for iPhone home indicator */
+    padding: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+
+    /*
+      The "glass": a translucent white layer
+      with a very strong blur behind it.
+    */
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(50px) saturate(200%);
+    -webkit-backdrop-filter: blur(50px) saturate(200%);
+
+    /* Round only the top corners - sits flush with screen bottom */
+    border-radius: 24px 24px 0 0;
+
+    /*
+      Three shadow layers create the 3-D glass illusion:
+      1. Outer drop-shadow lifts the bar off the page
+      2. Inset white highlights simulate edge reflections
+      3. A hairline border defines the surface edge
+    */
+    box-shadow:
+      0 -4px 30px -10px rgba(0, 0, 0, 0.1),
+      inset 0 1px 1px -1px rgba(255, 255, 255, 0.8),
+      inset 0 -1px 2px -1px rgba(255, 255, 255, 0.4),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+
+  /*
+    WET REFLECTION HIGHLIGHT
+    -------------------------
+    A curved white gradient across the top of
+    the bar that mimics the light-bending look
+    of a droplet of water on a smooth surface
+    (classic Apple "Aqua" aesthetic).
+  */
+  .mobile-bottom-nav::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 12px;
+    right: 12px;
+    height: 40%;
+    border-radius: 20px 20px 4px 4px;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    pointer-events: none;  /* clicks pass through to buttons */
+    z-index: 6;
+  }
+
+  /*
+    INNER WRAPPER
+    Ensures the pill and buttons sit inside
+    the padded area of the nav.
+  */
+  .bottom-nav-inner {
+    position: relative;
+  }
+
+  /*
+    FLEX CONTAINER FOR ALL NAV ITEMS
+    The pill and the three buttons live here.
+  */
+  .nav-items {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /*
+    SLIDING ACTIVE PILL
+    --------------------
+    An absolutely-positioned rounded rectangle
+    that moves behind whichever button is active.
+    Uses translateX() for GPU-accelerated motion.
+  */
+  .mobile-active-pill {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    height: 42px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 99px;
+
+    /*
+      Pill shadow: soft outer lift + inner gleam
+      to match the glass look of the parent nav.
+    */
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.05),
+      inset 0 1px 1px rgba(255, 255, 255, 0.8);
+
+    /*
+      Apple-style spring animation curve:
+      starts fast, overshoots slightly, then
+      settles into place (0.34 / 1.2 / 0.64 / 1).
+    */
+    transition:
+      transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1),
+      width 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+    z-index: 1;
+  }
+
+  /*
+    NAV BUTTONS
+    Each one fills equal width (flex:1) and
+    sits above the pill (z-index:2) so clicks
+    register on the button, not the pill.
+  */
+  .mobile-nav-btn {
+    /* Equal-width layout */
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* Button reset */
+    background: transparent;
+    border: none;
+    padding: 8px 4px;
+    height: 46px;
+    border-radius: 99px;
+
+    /* System font matches iOS appearance */
+    font-family: -apple-system, BlinkMacSystemFont,
+                 "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+
+    /* Above the pill */
+    z-index: 2;
+    transition: color 0.3s ease;
+  }
+
+  /*
+    BUTTON CONTENT
+    Stacks the SVG icon above the text label
+    using flex-direction: column.
+  */
+  .mobile-nav-btn .btn-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    pointer-events: none;   /* click targets the button, not the text */
+    transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  /* Subtle "press" feedback when tapped */
+  .mobile-nav-btn:active .btn-content {
+    transform: scale(0.88);
+  }
+
+  /* Active button gets darker text/icon */
+  .mobile-nav-btn.active {
+    color: rgba(0, 0, 0, 0.95);
+  }
+
+
+  /*=========================================
+    BOOKING LIGHTBOX - PHONE OVERRIDES
+    Makes the modal full-width, stacks the
+    layout vertically, and shrinks the
+    doctor image so it fits small screens.
+  =========================================*/
+
+  /* Modal content fills the screen width */
+  .booking-modal-content {
+    width: 94%;
+    max-width: 94%;
+    padding: 20px 16px;
+    margin: 15% auto;
+    border-radius: 16px;
+  }
+
+  /* Stack image above form instead of side-by-side */
+  .booking-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Move the doctor image to the top, make it compact */
+  .booking-left {
+    order: -1;
+    width: 100%;
+  }
+  .booking-doctor-img {
+    width: 100%;
+    height: auto;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  /* Reduce title size */
+  .booking-modal-content h1 {
+    font-size: 1.3em;
+  }
+
+  /* Compact form fields */
+  .booking-modal-content input,
+  .booking-modal-content select,
+  .booking-modal-content textarea {
+    padding: 10px 12px;
+    font-size: 0.9em;
+    margin: 6px 0;
+  }
+
+  /* Move close button closer */
+  .booking-close {
+    top: 8px;
+    right: 12px;
+    font-size: 1.6em;
+  }
+
+
+  /* Phone: push WhatsApp above the bottom nav */
+  .whatsapp-float {
+    bottom: 90px;
+  }
+
+
+  /*=========================================
+    ABOUT US - PHONE OVERRIDES
+    Reduces vertical spacing and shrinks
+    text so it fits comfortably on a small
+    screen.
+  =========================================*/
+  .about-section {
+    padding: 5vh 0;
+  }
+  .about-content {
+    width: 94%;
+    padding: 0 3%;
+  }
+  .about-content h1 {
+    font-size: 1.3em;
+  }
+  .about-content p {
+    letter-spacing: 0.04em;
+    font-size: 0.93em;
+  }
+
+
+  /*=========================================
+    SERVICE CARDS (Qualified Doctors etc.)
+    - PHONE OVERRIDES
+    Full-width cards, smaller margins and
+    icons, tighter text spacing.
+  =========================================*/
+  .section2 {
+    margin: 3vh auto;
+  }
+  .section2 .cards {
+    width: 96%;
+  }
+  .section2 .cards .card {
+    width: 100%;
+    margin: 12px auto;
+    max-width: 100%;
+  }
+  .section2 .cards .card .fa {
+    font-size: 2.2em;
+  }
+  .section2 .cards .card h1 {
+    font-size: 1.3em;
+    margin: 8px 0;
+  }
+  .section2 .cards .card p {
+    font-size: 0.93em;
+    letter-spacing: 0.04em;
+  }
+
+
+  /*=========================================
+    HEADER & BANNER - PHONE OVERRIDES
+    Keeps the header prominent and pins the
+    Instagram icon to the top-right corner.
+  =========================================*/
+
+  /* Fill the whole header area so no white
+     gaps show through between elements */
+  header {
+    background: #167ce9;
+  }
+
+  /* Banner is the positioning parent for the
+     Instagram icon (position: relative needed
+     for the absolute-positioned child). */
+  .banner {
+    position: relative;
+    padding: 14px 0;
+    text-align: left;
+  }
+  .banner a {
+    margin: 0 6px;
+  }
+  /* Instagram icon fixed to the top-right
+     of the banner bar */
+  .banner .section-right {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: auto;
+    float: none;
+    line-height: 1;
+  }
+  .banner .section-right a {
+    font-size: 1.3em;
+    margin-left: 0;
+    display: inline-block;
+  }
+
+  /* Logo - no longer absolutely positioned;
+     flows naturally in the page so it doesn't
+     overflow the screen width. */
+  .logo {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: auto;
+    padding: 10px 16px;
+    border-radius: 0 5px 5px 0;
+  }
+  .logo img {
+    height: 44px;
+  }
+  .logo-text {
+    font-size: 1.5em;
+  }
+  /* Remove the skew on phones so the logo
+     sits flush against the left edge */
+  .parallelogram {
+    transform: none;
+  }
+  .skew-fix {
+    transform: none;
+  }
+
+
+  /*=========================================
+    SECTION 3 - PHONE OVERRIDES
+    Stack content on top, cards below.
+  =========================================*/
+  .section3 {
+    display: flex;
+    flex-direction: column;
+  }
+  .section3 .cards {
+    width: 100%;
+    order: 2;
+  }
+  .section3 .cards .card {
+    width: 90%;
+    margin: 10px auto;
+  }
+  .section3 .content {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 90%;
+    margin: 0 auto 20px;
+    text-align: center;
+    order: 1;
+  }
+  .section3 .content h1 {
+    font-size: 1.8em;
+  }
+  .section3 .content p {
+    font-size: 1.1em;
+  }
+
+
+  /*=========================================
+    CONTACT PAGE - PHONE OVERRIDES
+    Prevent content from overflowing the card.
+  =========================================*/
+  .contact-card {
+    width: 92%;
+    padding: 1.5rem 1.2rem;
+  }
+  .contact-item {
+    padding: 14px;
+    gap: 12px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .contact-item .fa {
+    font-size: 1.5em;
+    width: 36px;
+    flex-shrink: 0;
+  }
+  .contact-item p {
+    font-size: 0.88em;
+  }
+
+
+  /*=========================================
+    GALLERY LIGHTBOX - PHONE OVERRIDES
+    Move close button above the image.
+  =========================================*/
+  .section4 .modal {
+    padding-top: 130px;
+  }
+  .section4 .close {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    font-size: 32px;
+  }
+
 }
 

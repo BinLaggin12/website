@@ -23,12 +23,67 @@ x.className = "topnav";
 
 
 
+//==========================================
+// MOBILE BOTTOM NAV - Active Pill Slider
+//==========================================
+// Positions a rounded pill behind whichever
+// nav button is active, with a springy
+// Apple-style animation. Also handles
+// navigation when a button is tapped.
+//==========================================
+(function() {
 
+  // Grab the nav buttons and the pill element
+  var navBtns = document.querySelectorAll('.mobile-nav-btn');
+  var activePill = document.getElementById('mobileActivePill');
 
+  // If the bottom nav doesn't exist on this
+  // page (e.g. someone removed it), just bail.
+  if (!navBtns.length || !activePill) return;
 
+  //------------------------
+  // Position the pill
+  //------------------------
+  function updatePill(btn, smooth) {
+    if (!btn) return;
+    if (!smooth) {
+      activePill.style.transition = 'none';
+    } else {
+      activePill.style.transition =
+        'transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1), ' +
+        'width 0.5s cubic-bezier(0.34, 1.2, 0.64, 1)';
+    }
+    activePill.style.width  = btn.offsetWidth + 'px';
+    activePill.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+  }
 
+  // Initial pill position
+  var activeBtn = document.querySelector('.mobile-nav-btn.active');
+  if (activeBtn) {
+    setTimeout(function() {
+      updatePill(activeBtn, false);
+    }, 50);
+  }
 
+  // Navigate on tap
+  for (var i = 0; i < navBtns.length; i++) {
+    (function(btn) {
+      btn.addEventListener('click', function() {
+        var href = btn.getAttribute('data-href');
+        if (href) {
+          window.location.href = href;
+        }
+      });
+    })(navBtns[i]);
+  }
 
+  // Reposition on resize
+  window.addEventListener('resize', function() {
+    var active = document.querySelector('.mobile-nav-btn.active');
+    if (active) updatePill(active, false);
+  });
+
+})();
 
 
 //MODAL
