@@ -230,7 +230,7 @@ http
       return apiRoutes(req, res);
     }
 
-    let filePath = req.url === "/" ? "/index.html" : req.url;
+    let filePath = req.url === "/" ? "/index.html" : decodeURIComponent(req.url);
     filePath = path.join(__dirname, filePath);
     const ext = path.extname(filePath);
 

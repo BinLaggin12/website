@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Patient Portal - Unicus Diagnostics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../Unicus Diagnostics Logo.png">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Merriweather', serif;
+  height: 100%;
+  background: #f4f6f9;
+}
+
+/* SPLASH SCREEN */
+#splash {
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100vh;
+background:#fff;
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:99999;
+transition:opacity 0.5s ease;
+}
+#splash.fade-out{
+opacity:0;
+pointer-events:none;
+}
+.splash-content{
+text-align:center;
+}
+.splash-content img{
+height:160px;
+}
+
+/* PHONE ENTRY SCREEN */
+#phoneEntry {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  z-index: 1000;
+}
+.entry-left {
+  flex: 1;
+  background: linear-gradient(135deg, #1E3A5F 0%, #167ce9 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+.entry-left img {
+  height: 100px;
+  filter: brightness(0) invert(1);
+  margin-bottom: 20px;
+}
+.entry-left h1 {
+  color: #fff;
+  font-size: 2.2em;
+  margin: 0 0 10px;
+}
+.entry-left p {
+  color: rgba(255,255,255,0.8);
+  font-size: 1.05em;
+  max-width: 360px;
+  line-height: 1.6;
+  margin: 0;
+}
+.entry-right {
+  width: 440px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.entry-card {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+.entry-card h1 {
+  font-size: 1.6em;
+  margin: 0 0 5px;
+  color: #1E3A5F;
+}
+.entry-card p {
+  color: #888;
+  font-size: 0.95em;
+  margin: 0 0 25px;
+}
+.entry-card input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1em;
+  font-family: inherit;
+  outline: none;
+  transition: border 0.3s;
+  margin-bottom: 16px;
+}
+.entry-card input:focus {
+  border-color: #167ce9;
+}
+.entry-card button {
+  width: 100%;
+  padding: 14px;
+  background: #167ce9;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.entry-card button:hover { background: #0f6ac9; }
+.entry-card button:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* DASHBOARD LAYOUT */
+#dashboard {
+  display: none;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  background: #1E3A5F;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.sidebar-header img {
+  height: 40px;
+}
+.sidebar-header span {
+  color: #fff;
+  font-size: 1.1em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.sidebar-nav {
+  flex: 1;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.95em;
+  font-family: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+.sidebar-item:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+.sidebar-item.active {
+  background: rgba(255,255,255,0.12);
+  color: #f1c40f;
+  font-weight: 700;
+}
+.sidebar-item .fa {
+  width: 20px;
+  text-align: center;
+  font-size: 1.1em;
+}
+.sidebar-logout {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 8px;
+}
+.sidebar-logout .sidebar-item {
+  color: rgba(255,255,255,0.5);
+}
+.sidebar-logout .sidebar-item:hover {
+  color: #e74c3c;
+  background: rgba(231,76,60,0.1);
+}
+
+/* MAIN CONTENT */
+.main-content {
+  margin-left: 260px;
+  padding: 30px 35px;
+  height: 100vh;
+  overflow-y: auto;
+}
+.main-content h2 {
+  font-size: 1.8em;
+  color: #1E3A5F;
+  margin: 0 0 8px;
+}
+.view-desc {
+  color: #888;
+  margin: 0 0 25px;
+  font-size: 0.95em;
+}
+
+/* VIEW CONTAINERS */
+.view { display: none; }
+.view.active { display: block; }
+
+/* PATIENT INFO BAR */
+.patient-info {
+  background: #e8f0fe;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.patient-info .fa { color: #167ce9; font-size: 1.3em; }
+.patient-info span { color: #1E3A5F; font-size: 0.95em; }
+.patient-info strong { color: #1E3A5F; }
+
+/* CARDS */
+.card-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.card-item {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-left: 4px solid #167ce9;
+  transition: box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+.card-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.card-item h3 {
+  margin: 0 0 6px;
+  font-size: 1.1em;
+  color: #1E3A5F;
+}
+.card-item .meta {
+  font-size: 0.85em;
+  color: #888;
+  margin: 0 0 4px;
+}
+.card-item .status {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.8em;
+  font-weight: 600;
+  align-self: flex-start;
+}
+.status-confirmed { background: #e8f5e9; color: #2e7d32; }
+.status-pending { background: #fff8e1; color: #f57f17; }
+.card-item .actions { margin-top: auto; padding-top: 12px; }
+.card-item .actions button {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-view {
+  background: #167ce9;
+  color: #fff;
+}
+.btn-view:hover { background: #0f6ac9; }
+.btn-download {
+  background: #27ae60;
+  color: #fff;
+  margin-left: 8px;
+}
+.btn-download:hover { background: #219a52; }
+
+/* REPORT DETAIL MODAL */
+.report-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+}
+.report-modal.open { display: flex; }
+.report-modal-content {
+  background: #fff;
+  border-radius: 14px;
+  padding: 30px;
+  width: 560px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  position: relative;
+}
+.report-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #888;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+.report-modal-close:hover { color: #000; }
+.report-modal-content h2 { margin-top: 0; }
+.report-modal-content .report-body {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 20px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.9em;
+  line-height: 1.6;
+  margin: 15px 0;
+}
+.report-modal-content .report-meta {
+  font-size: 0.85em;
+  color: #888;
+}
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #aaa;
+}
+.empty-state .fa { font-size: 3em; margin-bottom: 15px; }
+.empty-state p { font-size: 1em; margin: 0; }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  #phoneEntry {
+    flex-direction: column;
+  }
+  .entry-left {
+    flex: none;
+    padding: 30px 20px;
+  }
+  .entry-left img { height: 60px; }
+  .entry-left h1 { font-size: 1.5em; }
+  .entry-left p { font-size: 0.9em; }
+  .entry-right {
+    width: 100%;
+    padding: 30px 20px;
+  }
+}
+@media (max-width: 768px) {
+  .sidebar {
+    width: 220px;
+  }
+  .main-content {
+    margin-left: 220px;
+    padding: 20px;
+  }
+  .card-list {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    bottom: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0;
+  }
+  .sidebar-header { display: none; }
+  .sidebar-nav {
+    flex-direction: row;
+    padding: 8px;
+    gap: 0;
+  }
+  .sidebar-item {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 8px;
+    font-size: 0.8em;
+    white-space: nowrap;
+  }
+  .sidebar-logout {
+    border-top: none;
+    padding-top: 0;
+  }
+  .main-content {
+    margin-left: 0;
+    margin-top: 50px;
+    padding: 16px;
+    height: calc(100vh - 50px);
+  }
+  .card-list {
+    grid-template-columns: 1fr;
+  }
+  .card-item { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash" data-duration="500">
+<div class="splash-content">
+<img src="../Unicus Diagnostics Logo.png" alt="Unicus Diagnostics">
+</div>
+</div>
+
+<!-- PHONE ENTRY SCREEN -->
+<div id="phoneEntry">
+  <div class="entry-left">
+    <h1>Patient Portal</h1>
+    <p>Access your diagnostic reports, track your orders, and manage your health records — all in one place.</p>
+  </div>
+  <div class="entry-right">
+    <div class="entry-card">
+      <h1>Welcome Back</h1>
+      <p>Enter your registered phone number to continue.</p>
+      <form id="phoneForm">
+        <input type="tel" id="phoneInput" placeholder="Registered Phone Number" maxlength="15" required autocomplete="tel">
+        <button type="submit" id="phoneSubmitBtn">CONTINUE</button>
+      </form>
+      <div id="phoneError" style="color:#c62828;font-size:0.85em;margin-top:12px;display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="../Unicus Diagnostics Logo.png" alt="Unicus" style="height:34px;filter:none;">
+      <span>Unicus Diagnostics</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-item active" onclick="switchView('reports')">
+        <i class="fa fa-file-text"></i> My Reports
+      </button>
+      <button class="sidebar-item" onclick="switchView('orders')">
+        <i class="fa fa-shopping-cart"></i> My Orders
+      </button>
+      <div class="sidebar-logout">
+        <button class="sidebar-item" onclick="logout()">
+          <i class="fa fa-sign-out"></i> Logout
+        </button>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <!-- Patient info bar -->
+    <div class="patient-info" id="patientInfo">
+      <i class="fa fa-user-circle"></i>
+      <span>Patient: <strong id="patientName">—</strong></span>
+      <span>Phone: <strong id="patientPhone">—</strong></span>
+    </div>
+
+    <!-- MY REPORTS VIEW -->
+    <div id="view-reports" class="view active">
+      <h2>My Reports</h2>
+      <p class="view-desc">View and download your diagnostic reports.</p>
+      <div id="reportsList"><div class="empty-state"><i class="fa fa-file-text-o"></i><p>Loading reports...</p></div></div>
+    </div>
+
+    <!-- MY ORDERS VIEW -->
+    <div id="view-orders" class="view">
+      <h2>My Orders</h2>
+      <p class="view-desc">All your test bookings and order history.</p>
+      <div id="ordersList"><div class="empty-state"><i class="fa fa-shopping-cart"></i><p>Loading orders...</p></div></div>
+    </div>
+  </main>
+</div>
+
+<!-- REPORT DETAIL MODAL -->
+<div class="report-modal" id="reportModal">
+  <div class="report-modal-content">
+    <button class="report-modal-close" onclick="closeReportModal()">&times;</button>
+    <h2 id="modalReportTitle">Report</h2>
+    <div class="report-body" id="modalReportBody"></div>
+    <div class="report-meta" id="modalReportMeta"></div>
+  </div>
+</div>
+
+<script>
+var currentPhone = '';
+var currentPatientName = '';
+var bookings = [];
+var reports = {};
+
+document.getElementById('phoneForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var phone = document.getElementById('phoneInput').value.trim();
+  if (!phone) return;
+  var btn = document.getElementById('phoneSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'LOADING...';
+  document.getElementById('phoneError').style.display = 'none';
+  fetch('/api/bookings/' + encodeURIComponent(phone))
+    .then(function(r) {
+      if (!r.ok) throw new Error('No data found');
+      return r.json();
+    })
+    .then(function(data) {
+      if (!data.length) {
+        document.getElementById('phoneError').textContent = 'No bookings found for this phone number.';
+        document.getElementById('phoneError').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'CONTINUE';
+        return;
+      }
+      currentPhone = phone;
+      currentPatientName = data[0].patient_name;
+      bookings = data;
+      enterDashboard();
+    })
+    .catch(function() {
+      document.getElementById('phoneError').textContent = 'No bookings found. Make sure the backend server is running.';
+      document.getElementById('phoneError').style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'CONTINUE';
+    });
+});
+
+function enterDashboard() {
+  document.getElementById('phoneEntry').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'flex';
+  document.getElementById('patientName').textContent = currentPatientName;
+  document.getElementById('patientPhone').textContent = currentPhone;
+  loadReports();
+  loadOrders();
+}
+
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.querySelectorAll('.sidebar-item').forEach(function(v) { v.classList.remove('active'); });
+  document.getElementById('view-' + view).classList.add('active');
+  var items = document.querySelectorAll('.sidebar-item');
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].getAttribute('onclick') && items[i].getAttribute('onclick').indexOf("'" + view + "'") !== -1) {
+      items[i].classList.add('active');
+    }
+  }
+}
+
+function logout() {
+  window.location.href = '../index.html';
+}
+
+function loadReports() {
+  var container = document.getElementById('reportsList');
+  if (!bookings.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fa fa-file-text-o"></i><p>No reports available.</p></div>';
+    return;
+  }
+  var html = '<div class="card-list">';
+  var loaded = 0;
+  bookings.forEach(function(b) {
+    fetch('/api/report/' + b.booking_id)
+      .then(function(r) {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then(function(report) {
+        if (report) {
+          reports[report.booking_id] = report;
+        }
+        loaded++;
+        if (loaded === bookings.length) {
+          renderReports();
+        }
+      })
+      .catch(function() {
+        loaded++;
+        if (loaded === bookings.length) {
+          renderReports();
+        }
+      });
+  });
+}
+
+function renderReports() {
+  var container = document.getElementById('reportsList');
+  var html = '<div class="card-list">';
+  var hasReports = false;
+  bookings.forEach(function(b) {
+    var report = reports[b.booking_id];
+    hasReports = true;
+    html += '<div class="card-item">';
+    html += '<h3>' + b.test_name + '</h3>';
+    html += '<div class="meta">Booking ID: ' + b.booking_id + '</div>';
+    html += '<div class="meta">' + b.created_at + '</div>';
+    html += '<div><span class="status status-confirmed">' + b.status + '</span></div>';
+    html += '<div class="actions">';
+    if (report) {
+      html += '<button class="btn-view" onclick="showReport(\'' + report.booking_id + '\')"><i class="fa fa-eye"></i> View Report</button>';
+      html += '<button class="btn-download" onclick="downloadReport(\'' + report.booking_id + '\')"><i class="fa fa-download"></i> Download</button>';
+    } else {
+      html += '<span style="color:#888;font-size:0.85em;">Report pending</span>';
+    }
+    html += '</div></div>';
+  });
+  if (!hasReports) {
+    html += '<div class="empty-state"><i class="fa fa-file-text-o"></i><p>No reports available.</p></div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function loadOrders() {
+  var container = document.getElementById('ordersList');
+  if (!bookings.length) {
+    container.innerHTML = '<div class="empty-state"><i class="fa fa-shopping-cart"></i><p>No orders found.</p></div>';
+    return;
+  }
+  var html = '<div class="card-list">';
+  bookings.forEach(function(b) {
+    html += '<div class="card-item">';
+    html += '<h3>' + b.test_name + '</h3>';
+    html += '<div class="meta">Booking ID: ' + b.booking_id + '</div>';
+    html += '<div class="meta">Address: ' + b.collection_address + '</div>';
+    html += '<div class="meta">Booked on: ' + b.created_at + '</div>';
+    html += '<div><span class="status status-confirmed">' + b.status + '</span></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function showReport(bookingId) {
+  var report = reports[bookingId];
+  if (!report) return;
+  document.getElementById('modalReportTitle').textContent = report.test_name;
+  document.getElementById('modalReportBody').textContent = report.results;
+  document.getElementById('modalReportMeta').textContent = 'Generated: ' + report.generated_at;
+  document.getElementById('reportModal').classList.add('open');
+}
+
+function closeReportModal() {
+  document.getElementById('reportModal').classList.remove('open');
+}
+
+function downloadReport(bookingId) {
+  var report = reports[bookingId];
+  if (!report) return;
+  var content = report.test_name + '\n' + '='.repeat(report.test_name.length) + '\n\n';
+  content += 'Patient: ' + currentPatientName + '\n';
+  content += 'Booking ID: ' + report.booking_id + '\n\n';
+  content += report.results + '\n\n';
+  content += 'Generated: ' + report.generated_at;
+  var blob = new Blob([content], { type: 'text/plain' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'report_' + report.booking_id + '.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+document.getElementById('reportModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReportModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeReportModal();
+});
+
+// SPLASH SCREEN
+(function() {
+var splash = document.getElementById('splash');
+if (splash) {
+var duration = splash.getAttribute('data-duration');
+if (!duration) duration = 500;
+setTimeout(function() {
+splash.classList.add('fade-out');
+setTimeout(function() { splash.style.display = 'none'; }, 500);
+}, parseInt(duration));
+}
+})();
+
+// Auto-login from URL ?phone= parameter
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var phone = params.get('phone');
+  if (phone) {
+    document.getElementById('phoneInput').value = phone;
+    document.getElementById('phoneForm').dispatchEvent(new Event('submit'));
+  }
+})();
+</script>
+
+</body>
+</html>
