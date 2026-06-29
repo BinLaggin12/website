@@ -66,6 +66,18 @@
         </div>
     </div>
 </div>
+<div class="modal-overlay" id="reportModal">
+    <div class="modal-box" style="max-width:700px;">
+        <h2 id="reportModalTitle">Generate Report</h2>
+        <input type="hidden" id="genBookingId">
+        <input type="hidden" id="genTestName">
+        <div id="reportFormFields"></div>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('reportModal')">Cancel</button>
+            <button class="btn-success" onclick="generateReport()">Generate PDF</button>
+        </div>
+    </div>
+</div>
 <script src="script.js"></script>
 <script>
 requireAuth();
@@ -73,22 +85,38 @@ document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
 
 function loadBookings() {
     api('/bookings').then(function(bookings) {
-        var tbody = document.getElementById('bookingsBody');
-        tbody.innerHTML = '';
-        bookings.forEach(function(b) {
-            var statusClass = 'status-' + b.status;
-            tbody.innerHTML +=
-                '<tr>' +
-                '<td>' + escapeHtml(b.patient_name) + '</td>' +
-                '<td>' + escapeHtml(b.patient_phone) + '</td>' +
-                '<td>' + escapeHtml(b.test_name) + '</td>' +
-                '<td>' + escapeHtml(b.collection_address) + '</td>' +
-                '<td><span class="status ' + statusClass + '">' + escapeHtml(b.status) + '</span></td>' +
-                '<td>' + escapeHtml(b.created_at || '').substring(0, 10) + '</td>' +
-                '<td class="actions">' +
-                '<button class="btn-edit" onclick="openStatusModal(\'' + b.booking_id + '\', \'' + b.status + '\')">Status</button>' +
-                '</td>' +
-                '</tr>';
+        // Fetch report status for all bookings in parallel to check PDF availability
+        var reportPromises = bookings.map(function(b) {
+            return fetch('/api/report/' + b.booking_id).then(function(r) {
+                if (r.ok) return r.json();
+                return null;
+            }).catch(function() { return null; });
+        });
+        Promise.all(reportPromises).then(function(reports) {
+            var tbody = document.getElementById('bookingsBody');
+            tbody.innerHTML = '';
+            bookings.forEach(function(b, i) {
+                var report = reports[i];
+                var hasPdf = report && report.pdf_path;
+                var statusClass = 'status-' + b.status;
+                var downloadBtn = hasPdf
+                    ? '<a href="/api/admin/reports/' + b.booking_id + '/download" target="_blank" class="btn-download" style="margin-left:4px;padding:4px 10px;border-radius:4px;color:#fff;text-decoration:none;font-size:12px;background:#2e7d32;">PDF</a>'
+                    : '';
+                tbody.innerHTML +=
+                    '<tr>' +
+                    '<td>' + escapeHtml(b.patient_name) + '</td>' +
+                    '<td>' + escapeHtml(b.patient_phone) + '</td>' +
+                    '<td>' + escapeHtml(b.test_name) + '</td>' +
+                    '<td>' + escapeHtml(b.collection_address) + '</td>' +
+                    '<td><span class="status ' + statusClass + '">' + escapeHtml(b.status) + '</span></td>' +
+                    '<td>' + escapeHtml(b.created_at || '').substring(0, 10) + '</td>' +
+                    '<td class="actions">' +
+                    '<button class="btn-edit" onclick="openStatusModal(\'' + b.booking_id + '\', \'' + b.status + '\')">Status</button>' +
+                    '<button class="btn-success" onclick="openReportModal(\'' + b.booking_id + '\', \'' + escapeHtml(b.test_name) + '\')" style="margin-left:4px;">Report</button>' +
+                    downloadBtn +
+                    '</td>' +
+                    '</tr>';
+            });
         });
     });
 }
@@ -119,6 +147,56 @@ function saveStatus() {
         showMessage('Booking status updated');
         closeModal('statusModal');
         loadBookings();
+    });
+}
+
+function openReportModal(bookingId, testName) {
+    document.getElementById('genBookingId').value = bookingId;
+    document.getElementById('genTestName').value = testName;
+    document.getElementById('reportModalTitle').textContent = 'Generate Report - ' + testName;
+    var fieldsDiv = document.getElementById('reportFormFields');
+    fieldsDiv.innerHTML = '<p class="loading">Loading parameters...</p>';
+    document.getElementById('reportModal').classList.add('show');
+
+    // Fetch parameter template for this test
+    api('/tests/' + encodeURIComponent(testName) + '/parameters').then(function(params) {
+        fieldsDiv.innerHTML = '';
+        params.forEach(function(p) {
+            var label = document.createElement('label');
+            label.textContent = p.name + ' (' + p.unit + ')  [Normal: ' + p.normal_range + ']';
+            fieldsDiv.appendChild(label);
+            var input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'param-input';
+            input.dataset.paramName = p.name;
+            input.placeholder = 'Enter ' + p.name;
+            fieldsDiv.appendChild(input);
+        });
+    }).catch(function(err) {
+        fieldsDiv.innerHTML = '<p class="error">Failed to load parameters: ' + err.message + '</p>';
+    });
+}
+
+function generateReport() {
+    var bookingId = document.getElementById('genBookingId').value;
+    var inputs = document.querySelectorAll('#reportFormFields .param-input');
+    var parameterValues = {};
+    var allFilled = true;
+    inputs.forEach(function(inp) {
+        var val = inp.value.trim();
+        if (val === '') allFilled = false;
+        parameterValues[inp.dataset.paramName] = val;
+    });
+    if (!allFilled) {
+        showMessage('Please fill in all parameter values', 'error');
+        return;
+    }
+    api('/bookings/' + bookingId + '/generate-pdf', 'POST', {parameter_values: parameterValues}).then(function(result) {
+        showMessage('PDF report generated successfully. <a href="/api/admin/reports/' + bookingId + '/download" target="_blank" style="color:#fff;font-weight:bold;">Download PDF</a>');
+        closeModal('reportModal');
+        loadBookings();
+    }).catch(function(err) {
+        showMessage('Failed to generate PDF: ' + err.message, 'error');
     });
 }
 

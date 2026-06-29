@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import uuid
 from pathlib import Path
@@ -18,7 +19,10 @@ from .schemas import (
     AdminDashboardResponse,
     DoctorUpdate, TestUpdate,
     AdminBookingStatusUpdate, AdminReportCreate,
+    ParameterResponse, GeneratePdfRequest, PdfGeneratedResponse,
 )
+from .test_params import PARAM_MAP
+from .pdf_generator import generate_report_pdf, REPORTS_DIR
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -139,6 +143,118 @@ def create_fastapi_app(database: Database) -> FastAPI:
     def admin_update_report(report_id: str, body: ReportCreate, _=Depends(require_admin)):
         database.update_report(report_id, body.results)
         return {"status": "ok"}
+
+    # --- PDF Report Generation ---
+
+    @app.get("/api/admin/tests/{test_name}/parameters")
+    def admin_get_test_parameters(test_name: str, _=Depends(require_admin)):
+        """
+        Return the parameter template for a given test name.
+        The test_name is matched case-insensitively against PARAM_MAP keys.
+        """
+        for key, params in PARAM_MAP.items():
+            if key.lower() == test_name.lower():
+                return [ParameterResponse(name=p.name, unit=p.unit, normal_range=p.normal_range) for p in params]
+        raise HTTPException(404, f"Unknown test: {test_name}")
+
+    @app.post("/api/admin/bookings/{booking_id}/generate-pdf")
+    def admin_generate_pdf(booking_id: str, body: GeneratePdfRequest, _=Depends(require_admin)):
+        """
+        Generate a PDF report for a booking using the submitted parameter values.
+        1. Fetch the booking and associated report (or create one).
+        2. Validate the test type and fetch its parameter definitions.
+        3. Call generate_report_pdf() to create the PDF file.
+        4. Persist the report data (parameter_values, pdf_path) to all tables.
+        """
+        booking = database.get_booking(booking_id)
+        if not booking:
+            raise HTTPException(404, "Booking not found")
+
+        test_name = booking.test_name
+        params = None
+        for key, p_list in PARAM_MAP.items():
+            if key.lower() == test_name.lower():
+                params = p_list
+                break
+        if not params:
+            raise HTTPException(400, f"No parameter definitions for test: {test_name}")
+
+        # Build results text
+        results_lines = []
+        for p in params:
+            val = body.parameter_values.get(p.name, "")
+            results_lines.append(f"{p.name}: {val} {p.unit}")
+        results_text = "\n".join(results_lines)
+        parameter_values_json = json.dumps(body.parameter_values)
+
+        # Generate PDF
+        try:
+            pdf_path = generate_report_pdf(
+                booking_id=booking_id,
+                patient_name=booking.patient_name,
+                patient_phone=booking.patient_phone,
+                patient_address="",
+                test_name=test_name,
+                parameter_values=body.parameter_values,
+                parameters=params,
+                collection_address=booking.collection_address,
+            )
+        except Exception as exc:
+            raise HTTPException(500, f"PDF generation failed: {exc}")
+
+        from datetime import datetime
+        now = datetime.utcnow()
+        bid = uuid.UUID(booking_id)
+        pid = uuid.UUID(str(booking.patient_id))
+
+        existing = database.get_report_by_booking(booking_id)
+        if existing:
+            rid = uuid.UUID(str(existing.report_id))
+            database.update_report(str(rid), results_text)
+            database.update_report_pdf(str(rid), pdf_path)
+        else:
+            rid = uuid.uuid4()
+            database.session.execute(
+                database.prepared.report_insert,
+                [rid, bid, pid, test_name, results_text, parameter_values_json, pdf_path, now],
+            )
+
+        database.session.execute(
+            "INSERT INTO reports_by_booking (booking_id, report_id, patient_id, test_name, results, parameter_values, pdf_path, generated_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            [bid, rid, pid, test_name, results_text, parameter_values_json, pdf_path, now],
+        )
+        database.session.execute(
+            "INSERT INTO all_reports (partition, generated_at, report_id, booking_id, patient_id, test_name, results, parameter_values, pdf_path) VALUES (0, %s, %s, %s, %s, %s, %s, %s, %s)",
+            [now, rid, bid, pid, test_name, results_text, parameter_values_json, pdf_path],
+        )
+
+        return PdfGeneratedResponse(
+            report_id=str(rid),
+            booking_id=booking_id,
+            test_name=test_name,
+            pdf_path=pdf_path,
+            generated_at=str(now),
+        )
+
+    @app.get("/api/admin/reports/{booking_id}/download")
+    def admin_download_pdf(booking_id: str, _=Depends(require_admin)):
+        """
+        Serve the generated PDF file for a given booking.
+        First checks the database for the stored file path,
+        then falls back to looking in the generated_reports/ directory.
+        """
+        pdf_candidate = REPORTS_DIR / f"{booking_id}.pdf"
+        if pdf_candidate.exists():
+            return FileResponse(str(pdf_candidate), media_type="application/pdf",
+                                filename=f"report_{booking_id}.pdf")
+        # Fall back to the path stored in the database
+        report = database.get_report_by_booking(booking_id)
+        if report and report.pdf_path:
+            pdf_path = report.pdf_path
+            if os.path.exists(pdf_path):
+                return FileResponse(pdf_path, media_type="application/pdf",
+                                    filename=f"report_{booking_id}.pdf")
+        raise HTTPException(404, "PDF not found for this booking")
 
     # --- Admin doctors ---
 
@@ -325,8 +441,28 @@ def create_fastapi_app(database: Database) -> FastAPI:
             patient_id=str(report.patient_id),
             test_name=report.test_name,
             results=report.results,
+            parameter_values=report.parameter_values,
+            pdf_path=report.pdf_path,
             generated_at=report.generated_at,
         )
+
+    @app.get("/api/report/{booking_id}/download")
+    def download_report_pdf(booking_id: str):
+        """
+        Public endpoint to download a generated PDF report for a booking.
+        No admin auth required (same security level as viewing the report text).
+        """
+        report = database.get_report_by_booking(booking_id)
+        if not report:
+            raise HTTPException(404, "Report not found for this booking")
+        pdf_candidate = REPORTS_DIR / f"{booking_id}.pdf"
+        if pdf_candidate.exists():
+            return FileResponse(str(pdf_candidate), media_type="application/pdf",
+                                filename=f"report_{booking_id}.pdf")
+        if report.pdf_path and os.path.exists(report.pdf_path):
+            return FileResponse(report.pdf_path, media_type="application/pdf",
+                                filename=f"report_{booking_id}.pdf")
+        raise HTTPException(404, "PDF not generated yet for this report")
 
     # --- Seed ---
 

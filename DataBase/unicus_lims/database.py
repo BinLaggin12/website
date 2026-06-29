@@ -59,6 +59,8 @@ class Report:
     test_name: str
     results: str
     generated_at: str
+    parameter_values: str = ""
+    pdf_path: str = ""
 
 
 @dataclass
@@ -85,6 +87,7 @@ class PreparedStatements:
     report_by_id: PreparedStatement = None
     report_by_booking: PreparedStatement = None
     report_by_booking_insert: PreparedStatement = None
+    report_update_pdf: PreparedStatement = None
 
 
 class Database:
@@ -179,6 +182,8 @@ class Database:
                 patient_id UUID,
                 test_name TEXT,
                 results TEXT,
+                parameter_values TEXT,
+                pdf_path TEXT,
                 generated_at TIMESTAMP
             )
         """)
@@ -189,6 +194,8 @@ class Database:
                 patient_id UUID,
                 test_name TEXT,
                 results TEXT,
+                parameter_values TEXT,
+                pdf_path TEXT,
                 generated_at TIMESTAMP
             )
         """)
@@ -234,9 +241,19 @@ class Database:
                 patient_id UUID,
                 test_name TEXT,
                 results TEXT,
+                parameter_values TEXT,
+                pdf_path TEXT,
                 PRIMARY KEY ((partition), generated_at, report_id)
             ) WITH CLUSTERING ORDER BY (generated_at DESC)
         """)
+
+        # Backwards-compatible column additions (safe if columns already exist)
+        for tbl in ("reports", "reports_by_booking", "all_reports"):
+            for col in ("parameter_values text", "pdf_path text"):
+                try:
+                    self._execute(f"ALTER TABLE {tbl} ADD {col}")
+                except Exception:
+                    pass
 
     def _prepare_statements(self):
         p = self.prepared
@@ -283,7 +300,7 @@ class Database:
         p.test_list = self.session.prepare("SELECT * FROM tests")
 
         p.report_insert = self.session.prepare(
-            "INSERT INTO reports (report_id, booking_id, patient_id, test_name, results, generated_at) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO reports (report_id, booking_id, patient_id, test_name, results, parameter_values, pdf_path, generated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )
         p.report_by_id = self.session.prepare(
             "SELECT * FROM reports WHERE report_id = ?"
@@ -292,7 +309,10 @@ class Database:
             "SELECT * FROM reports_by_booking WHERE booking_id = ?"
         )
         p.report_by_booking_insert = self.session.prepare(
-            "INSERT INTO reports_by_booking (booking_id, report_id, patient_id, test_name, results, generated_at) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO reports_by_booking (booking_id, report_id, patient_id, test_name, results, parameter_values, pdf_path, generated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        p.report_update_pdf = self.session.prepare(
+            "UPDATE reports SET pdf_path = ? WHERE report_id = ?"
         )
 
     # --- Patient operations ---
@@ -392,24 +412,35 @@ class Database:
 
     # --- Report operations ---
 
-    def create_report(self, booking_id: str, patient_id: str, test_name: str, results: str) -> Report:
+    def create_report(self, booking_id: str, patient_id: str, test_name: str, results: str, parameter_values: str = "", pdf_path: str = "") -> Report:
         report_id = uuid.uuid4()
         now = datetime.utcnow()
         bid = uuid.UUID(booking_id)
         pid = uuid.UUID(patient_id)
-        self.session.execute(self.prepared.report_insert, [report_id, bid, pid, test_name, results, now])
-        self.session.execute(self.prepared.report_by_booking_insert, [bid, report_id, pid, test_name, results, now])
+        self.session.execute(self.prepared.report_insert, [report_id, bid, pid, test_name, results, parameter_values, pdf_path, now])
+        self.session.execute(self.prepared.report_by_booking_insert, [bid, report_id, pid, test_name, results, parameter_values, pdf_path, now])
         self.session.execute(
-            "INSERT INTO all_reports (partition, generated_at, report_id, booking_id, patient_id, test_name, results) VALUES (0, %s, %s, %s, %s, %s, %s)",
-            [now, report_id, bid, pid, test_name, results]
+            "INSERT INTO all_reports (partition, generated_at, report_id, booking_id, patient_id, test_name, results, parameter_values, pdf_path) VALUES (0, %s, %s, %s, %s, %s, %s, %s, %s)",
+            [now, report_id, bid, pid, test_name, results, parameter_values, pdf_path]
         )
-        return Report(report_id=report_id, booking_id=bid, patient_id=pid, test_name=test_name, results=results, generated_at=str(now))
+        return Report(report_id=report_id, booking_id=bid, patient_id=pid, test_name=test_name, results=results, parameter_values=parameter_values, pdf_path=pdf_path, generated_at=str(now))
 
     def get_report_by_booking(self, booking_id: str) -> Report | None:
         rows = self.session.execute(self.prepared.report_by_booking, [uuid.UUID(booking_id)])
         for row in rows:
-            return Report(report_id=row.report_id, booking_id=row.booking_id, patient_id=row.patient_id, test_name=row.test_name, results=row.results, generated_at=str(row.generated_at))
+            return Report(
+                report_id=row.report_id, booking_id=row.booking_id,
+                patient_id=row.patient_id, test_name=row.test_name,
+                results=row.results,
+                parameter_values=getattr(row, "parameter_values", ""),
+                pdf_path=getattr(row, "pdf_path", ""),
+                generated_at=str(row.generated_at),
+            )
         return None
+
+    def update_report_pdf(self, report_id: str, pdf_path: str):
+        rid = uuid.UUID(report_id)
+        self.session.execute(self.prepared.report_update_pdf, [pdf_path, rid])
 
     def seed_doctors(self):
         existing = self.list_doctors()
@@ -489,17 +520,23 @@ class Database:
 
     def list_all_reports(self):
         rows = self.session.execute("SELECT * FROM all_reports LIMIT 500")
-        return [
-            {
-                "report_id": str(r.report_id),
-                "booking_id": str(r.booking_id),
-                "patient_id": str(r.patient_id),
-                "test_name": r.test_name,
-                "results": r.results,
-                "generated_at": str(r.generated_at),
-            }
-            for r in rows
-        ]
+        seen = {}
+        for r in rows:
+            bid = str(r.booking_id)
+            # Keep only the most recent row per booking_id (dedup)
+            if bid not in seen or r.generated_at > seen[bid]["_ts"]:
+                seen[bid] = {
+                    "report_id": str(r.report_id),
+                    "booking_id": bid,
+                    "patient_id": str(r.patient_id),
+                    "test_name": r.test_name,
+                    "results": r.results,
+                    "parameter_values": getattr(r, "parameter_values", ""),
+                    "pdf_path": getattr(r, "pdf_path", ""),
+                    "generated_at": str(r.generated_at),
+                    "_ts": r.generated_at,
+                }
+        return [v for k, v in seen.items()]
 
     def get_all_bookings_count(self) -> int:
         for r in self.session.execute("SELECT COUNT(*) FROM all_bookings"):

@@ -61,6 +61,8 @@ class ReportResponse(BaseModel):
     patient_id: str
     test_name: str
     results: str
+    parameter_values: str = ""
+    pdf_path: str = ""
     generated_at: str
 
 
@@ -134,3 +136,21 @@ class AdminReportCreate(BaseModel):
 
 class AdminBookingStatusUpdate(BaseModel):
     status: str
+
+
+class ParameterResponse(BaseModel):
+    name: str
+    unit: str
+    normal_range: str
+
+
+class GeneratePdfRequest(BaseModel):
+    parameter_values: dict[str, str]
+
+
+class PdfGeneratedResponse(BaseModel):
+    report_id: str
+    booking_id: str
+    test_name: str
+    pdf_path: str
+    generated_at: str

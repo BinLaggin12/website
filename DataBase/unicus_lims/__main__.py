@@ -1,7 +1,14 @@
 import hashlib
 
+from pathlib import Path
+
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
+
+# Ensure the generated_reports directory exists
+HERE = Path(__file__).resolve().parent
+REPORTS_DIR = HERE / "generated_reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _hash_password(password: str) -> str:

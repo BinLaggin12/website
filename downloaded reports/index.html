@@ -679,7 +679,28 @@ function showReport(bookingId) {
   var report = reports[bookingId];
   if (!report) return;
   document.getElementById('modalReportTitle').textContent = report.test_name;
-  document.getElementById('modalReportBody').textContent = report.results;
+  // If parameter_values exists, render structured table
+  if (report.parameter_values) {
+    try {
+      var params = JSON.parse(report.parameter_values);
+      var html = '<table style="width:100%;border-collapse:collapse;">';
+      html += '<tr style="background:#1a237e;color:#fff;"><th style="padding:8px;text-align:left;">Parameter</th><th style="padding:8px;text-align:left;">Result</th></tr>';
+      var alt = false;
+      for (var key in params) {
+        html += '<tr style="background:' + (alt ? '#fafafa' : '#fff') + ';">';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid #e0e0e0;">' + key + '</td>';
+        html += '<td style="padding:6px 8px;border-bottom:1px solid #e0e0e0;">' + params[key] + '</td>';
+        html += '</tr>';
+        alt = !alt;
+      }
+      html += '</table>';
+      document.getElementById('modalReportBody').innerHTML = html;
+    } catch(e) {
+      document.getElementById('modalReportBody').textContent = report.results;
+    }
+  } else {
+    document.getElementById('modalReportBody').textContent = report.results;
+  }
   document.getElementById('modalReportMeta').textContent = 'Generated: ' + report.generated_at;
   document.getElementById('reportModal').classList.add('open');
 }
@@ -691,6 +712,15 @@ function closeReportModal() {
 function downloadReport(bookingId) {
   var report = reports[bookingId];
   if (!report) return;
+  // If PDF exists, download from server
+  if (report.pdf_path) {
+    var a = document.createElement('a');
+    a.href = '/api/report/' + bookingId + '/download';
+    a.download = 'report_' + bookingId + '.pdf';
+    a.click();
+    return;
+  }
+  // Fallback: download as plain text
   var content = report.test_name + '\n' + '='.repeat(report.test_name.length) + '\n\n';
   content += 'Patient: ' + currentPatientName + '\n';
   content += 'Booking ID: ' + report.booking_id + '\n\n';

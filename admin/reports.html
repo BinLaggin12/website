@@ -39,6 +39,7 @@
                     <th>Booking ID</th>
                     <th>Test</th>
                     <th>Results</th>
+                    <th>PDF</th>
                     <th>Generated</th>
                     <th>Actions</th>
                 </tr>
@@ -71,11 +72,16 @@ function loadReports() {
         var tbody = document.getElementById('reportsBody');
         tbody.innerHTML = '';
         reports.forEach(function(r) {
+            var hasPdf = r.pdf_path && r.pdf_path.length > 0;
+            var pdfCell = hasPdf
+                ? '<a href="/api/admin/reports/' + r.booking_id + '/download" target="_blank" class="btn-success" style="padding:4px 10px;border-radius:4px;color:#fff;text-decoration:none;font-size:12px;">Download</a>'
+                : '<span style="color:#999;">Not generated</span>';
             tbody.innerHTML +=
                 '<tr>' +
                 '<td>' + escapeHtml(r.booking_id) + '</td>' +
                 '<td>' + escapeHtml(r.test_name) + '</td>' +
                 '<td>' + escapeHtml((r.results || '').substring(0, 60)) + '...</td>' +
+                '<td>' + pdfCell + '</td>' +
                 '<td>' + escapeHtml((r.generated_at || '').substring(0, 10)) + '</td>' +
                 '<td class="actions">' +
                 '<button class="btn-edit" onclick="openEditModal(\'' + r.report_id + '\', \'' + escapeHtml(r.results) + '\')">Edit</button>' +
