@@ -1061,19 +1061,33 @@ setTimeout(function() { splash.style.display = 'none'; }, 500);
 <script>
 // DYNAMIC ACTIVE NAV HIGHLIGHTING
 function highlightActiveNav() {
-  var path = decodeURIComponent(window.location.pathname);
-  if (path.charAt(0) === '/') path = path.substring(1);
+  var pagePath = decodeURIComponent(window.location.pathname);
+  if (pagePath.charAt(0) === '/') pagePath = pagePath.substring(1);
+
+  function resolve(href) {
+    var parts = pagePath.split('/');
+    parts.pop();
+    var segs = href.split('/');
+    for (var i = 0; i < segs.length; i++) {
+      if (segs[i] === '..') { if (parts.length) parts.pop(); }
+      else { parts.push(decodeURIComponent(segs[i])); }
+    }
+    return parts.join('/');
+  }
+
+  function matches(target) {
+    var resolved = resolve(target);
+    if (pagePath === resolved) return true;
+    var dir = resolved.replace(/\.html$/, '') + '/';
+    if (pagePath.indexOf(dir) === 0) return true;
+    return false;
+  }
 
   var navBtns = document.querySelectorAll('.mobile-nav-btn');
   for (var i = 0; i < navBtns.length; i++) {
     var dataHref = navBtns[i].getAttribute('data-href');
     navBtns[i].classList.remove('active');
-    if (dataHref) {
-      var norm = decodeURIComponent(dataHref.indexOf('../') === 0 ? dataHref.substring(3) : dataHref);
-      if (path === norm || path.indexOf(norm.replace(/\.html$/, '') + '/') === 0) {
-        navBtns[i].classList.add('active');
-      }
-    }
+    if (dataHref && matches(dataHref)) navBtns[i].classList.add('active');
   }
 }
 highlightActiveNav();

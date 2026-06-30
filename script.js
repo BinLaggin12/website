@@ -17,8 +17,32 @@ setTimeout(function() { splash.style.display = 'none'; }, 500);
 // in both desktop and mobile navigation.
 //==========================================
 function highlightActiveNav() {
-  var path = decodeURIComponent(window.location.pathname);
-  if (path.charAt(0) === '/') path = path.substring(1);
+  var pagePath = decodeURIComponent(window.location.pathname);
+  if (pagePath.charAt(0) === '/') pagePath = pagePath.substring(1);
+
+  // Resolve a possibly-relative href against the current page path.
+  // Handles both web server paths (index.html) and
+  // file:// protocol paths (C:/Users/.../index.html).
+  function resolve(href) {
+    // Treat the current page's directory as the base
+    var parts = pagePath.split('/');
+    parts.pop(); // remove current filename
+    // Walk through each segment of the href
+    var segs = href.split('/');
+    for (var i = 0; i < segs.length; i++) {
+      if (segs[i] === '..') { if (parts.length) parts.pop(); }
+      else { parts.push(decodeURIComponent(segs[i])); }
+    }
+    return parts.join('/');
+  }
+
+  function matches(target) {
+    var resolved = resolve(target);
+    if (pagePath === resolved) return true;
+    var dir = resolved.replace(/\.html$/, '') + '/';
+    if (pagePath.indexOf(dir) === 0) return true;
+    return false;
+  }
 
   // Desktop topnav
   var nav = document.getElementById('myTopnav');
@@ -28,10 +52,7 @@ function highlightActiveNav() {
       var href = links[i].getAttribute('href');
       if (href && href !== 'javascript:void(0);') {
         links[i].classList.remove('active');
-        href = decodeURIComponent(href);
-        if (path === href || path.indexOf(href.replace(/\.html$/, '') + '/') === 0) {
-          links[i].classList.add('active');
-        }
+        if (matches(href)) links[i].classList.add('active');
       }
     }
   }
@@ -41,12 +62,7 @@ function highlightActiveNav() {
   for (var i = 0; i < navBtns.length; i++) {
     var dataHref = navBtns[i].getAttribute('data-href');
     navBtns[i].classList.remove('active');
-    if (dataHref) {
-      var norm = decodeURIComponent(dataHref.indexOf('../') === 0 ? dataHref.substring(3) : dataHref);
-      if (path === norm || path.indexOf(norm.replace(/\.html$/, '') + '/') === 0) {
-        navBtns[i].classList.add('active');
-      }
-    }
+    if (dataHref && matches(dataHref)) navBtns[i].classList.add('active');
   }
 }
 highlightActiveNav();
