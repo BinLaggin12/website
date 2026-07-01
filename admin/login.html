@@ -49,6 +49,7 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
         }
         localStorage.setItem('admin_token', res.body.token);
         localStorage.setItem('admin_username', res.body.username);
+        localStorage.setItem('admin_role', res.body.role);
         window.location.href = 'dashboard.html';
     })
     .catch(function() {

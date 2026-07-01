@@ -20,6 +20,13 @@
       "phone": "123456",
       "address": "mla",
       "created_at": "2026-06-30T06:52:26.678022"
+    },
+    {
+      "patient_id": "3373-b198-9699",
+      "name": "sofiyab",
+      "phone": "1234",
+      "address": "awdaw",
+      "created_at": "2026-07-01T19:44:18.290Z"
     }
   ],
   "bookings": [
@@ -82,6 +89,16 @@
       "collection_address": "mla",
       "status": "confirmed",
       "created_at": "2026-06-30T06:52:37.669046"
+    },
+    {
+      "booking_id": "bc05-5856-2d73",
+      "patient_id": "3373-b198-9699",
+      "patient_name": "sofiyab",
+      "patient_phone": "1234",
+      "test_name": "Creatinine Test",
+      "collection_address": "awdaw",
+      "status": "confirmed",
+      "created_at": "2026-07-01T19:44:18.290Z"
     }
   ],
   "reports": [
@@ -146,7 +163,7 @@
       "test_id": "5cc7-c23f-833b",
       "name": "CBC Test",
       "price": 400,
-      "description": "Complete Blood Count \u00e2\u20ac\u201d evaluates overall health and detects disorders.",
+      "description": "Complete Blood Count â€” evaluates overall health and detects disorders.",
       "category": "Pathology"
     },
     {

@@ -1,5 +1,6 @@
 var TOKEN = localStorage.getItem('admin_token');
 var USERNAME = localStorage.getItem('admin_username');
+var ROLE = localStorage.getItem('admin_role');
 
 function isLoggedIn() {
     return TOKEN && TOKEN.length > 0;
@@ -27,6 +28,7 @@ function api(path, method, body) {
         if (r.status === 401) {
             localStorage.removeItem('admin_token');
             localStorage.removeItem('admin_username');
+            localStorage.removeItem('admin_role');
             window.location.href = '/admin/login.html';
             throw new Error('Unauthorized');
         }

@@ -58,7 +58,7 @@ function seed() {
   if (data.tests.length === 0) {
     data.tests = [
       { test_id: uid(), name: "Creatinine Test", price: 300, description: "Measures creatinine levels to assess kidney function.", category: "Pathology" },
-      { test_id: uid(), name: "CBC Test", price: 400, description: "Complete Blood Count — evaluates overall health and detects disorders.", category: "Pathology" },
+      { test_id: uid(), name: "CBC Test", price: 400, description: "Complete Blood Count - evaluates overall health and detects disorders.", category: "Pathology" },
       { test_id: uid(), name: "C Reactive Protein Test", price: 500, description: "Measures CRP levels to detect inflammation or infection.", category: "Pathology" },
       { test_id: uid(), name: "Blood Sugar", price: 200, description: "Measures glucose levels in the blood for diabetes screening.", category: "Pathology" },
     ];

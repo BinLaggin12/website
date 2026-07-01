@@ -11,7 +11,7 @@
 <body>
 <div class="admin-header">
     <div class="brand">
-        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics — Admin</a>
+        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics - <span id="brandRole">Admin</span></a>
     </div>
     <div class="user-info">
         <span id="userDisplay"></span>
@@ -44,6 +44,7 @@
     <div class="data-table-wrap">
         <div class="table-header">
             <h2>Test Catalog</h2>
+            <button id="syncBtn" class="btn-success" onclick="syncPrices()" style="display:none;">Sync from Google Sheets</button>
         </div>
         <table class="data-table">
             <thead>
@@ -81,7 +82,10 @@
 <script src="script.js"></script>
 <script>
 requireAuth();
+var ROLE = localStorage.getItem('admin_role');
 document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+var brandRole = document.getElementById('brandRole');
+if (brandRole) brandRole.textContent = ROLE === 'owner' ? 'Owner' : 'Admin';
 
 function loadTests() {
     fetch('/api/tests').then(function(r) { return r.json(); }).then(function(tests) {
@@ -129,15 +133,35 @@ function saveTest() {
     });
 }
 
+function syncPrices() {
+    var btn = document.getElementById('syncBtn');
+    btn.disabled = true;
+    btn.textContent = 'Syncing...';
+    api('/sync-prices', 'POST').then(function(data) {
+        showMessage('Prices synced from Google Sheets successfully');
+        loadTests();
+    }).catch(function(err) {
+        showMessage('Sync failed: ' + err.message, 'error');
+    }).finally(function() {
+        btn.disabled = false;
+        btn.textContent = 'Sync from Google Sheets';
+    });
+}
+
 function logout() {
     api('/logout', 'POST').then(function() {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_username');
+        localStorage.removeItem('admin_role');
         window.location.href = 'login.html';
     });
 }
 
 loadTests();
+
+if (ROLE === 'owner') {
+    document.getElementById('syncBtn').style.display = 'inline-block';
+}
 </script>
 </body>
 </html>

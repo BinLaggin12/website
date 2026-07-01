@@ -1,9 +1,12 @@
 import hashlib
+import os
 
 from pathlib import Path
 
 DEFAULT_ADMIN_USER = "admin"
 DEFAULT_ADMIN_PASS = "admin123"
+OWNER_USER = "owner"
+OWNER_PASS = "owner123"
 
 # Ensure the generated_reports directory exists
 HERE = Path(__file__).resolve().parent
@@ -23,7 +26,9 @@ if __name__ == "__main__":
     database.seed_doctors()
     database.seed_tests()
     database.create_admin_user(DEFAULT_ADMIN_USER, _hash_password(DEFAULT_ADMIN_PASS))
+    database.create_admin_user(OWNER_USER, _hash_password(OWNER_PASS), role="owner")
     api = create_fastapi_app(database)
     import uvicorn
-    print(f"Unicus Diagnostics + Admin running at http://localhost:3000")
-    uvicorn.run(api, host="0.0.0.0", port=3000)
+    port = int(os.environ.get("PORT", 3000))
+    print(f"Unicus Diagnostics + Admin running at http://localhost:{port}")
+    uvicorn.run(api, host="0.0.0.0", port=port)

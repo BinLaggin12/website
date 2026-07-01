@@ -5,3 +5,5 @@ httpx
 matplotlib
 seaborn
 reportlab
+gspread
+google-auth

@@ -11,7 +11,7 @@
 <body>
 <div class="admin-header">
     <div class="brand">
-        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics — Admin</a>
+        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics - <span id="brandRole">Admin</span></a>
     </div>
     <div class="user-info">
         <span id="userDisplay"></span>
@@ -42,15 +42,15 @@
 <div class="admin-content">
     <div class="dashboard-cards" id="dashboardCards">
         <div class="dashboard-card">
-            <div class="number" id="totalPatients">—</div>
+            <div class="number" id="totalPatients">-</div>
             <div class="label">Total Patients</div>
         </div>
         <div class="dashboard-card">
-            <div class="number" id="totalBookings">—</div>
+            <div class="number" id="totalBookings">-</div>
             <div class="label">Total Bookings</div>
         </div>
         <div class="dashboard-card">
-            <div class="number" id="todaysBookings">—</div>
+            <div class="number" id="todaysBookings">-</div>
             <div class="label">Today's Bookings</div>
         </div>
     </div>
@@ -60,6 +60,8 @@
 <script>
 requireAuth();
 document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+var brandRole = document.getElementById('brandRole');
+if (brandRole) brandRole.textContent = ROLE === 'owner' ? 'Owner' : 'Admin';
 
 function loadDashboard() {
     api('/dashboard').then(function(d) {
@@ -73,6 +75,7 @@ function logout() {
     api('/logout', 'POST').then(function() {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_username');
+        localStorage.removeItem('admin_role');
         window.location.href = 'login.html';
     });
 }

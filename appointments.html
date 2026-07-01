@@ -166,7 +166,7 @@ function loadTestOptions() {
     var sel = document.getElementById('testSelect');
     sel.innerHTML = '<option value="">Select Test</option>';
     tests.forEach(function(t) {
-      sel.innerHTML += '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + ' — ₹' + escapeHtml(String(t.price)) + '</option>';
+      sel.innerHTML += '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + ' - ₹' + escapeHtml(String(t.price)) + '</option>';
     });
   });
 }

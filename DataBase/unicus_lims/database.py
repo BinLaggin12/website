@@ -452,6 +452,22 @@ class Database:
         rows = self.session.execute(self.prepared.test_list)
         return [Test(test_id=r.test_id, name=r.name, price=r.price, description=r.description, category=r.category) for r in rows]
 
+    def delete_all_tests(self):
+        self._execute("TRUNCATE tests")
+
+    def upsert_test_by_name(self, name: str, price: float, description: str, category: str) -> Test:
+        existing = self.session.execute(
+            "SELECT * FROM tests WHERE name = %s ALLOW FILTERING", (name,)
+        )
+        for row in existing:
+            tid = row.test_id
+            self.session.execute(
+                "UPDATE tests SET price = %s, description = %s, category = %s WHERE test_id = %s",
+                (price, description, category, tid),
+            )
+            return Test(test_id=tid, name=name, price=price, description=description, category=category)
+        return self.create_test(name, price, description, category)
+
     # --- Report operations ---
 
     def create_report(self, booking_id: str, patient_id: str, test_name: str, results: str, parameter_values: str = "", pdf_path: str = "") -> Report:
@@ -503,7 +519,7 @@ class Database:
             return
         tests = [
             ("Creatinine Test", 300.0, "Measures creatinine levels to assess kidney function.", "Pathology"),
-            ("CBC Test", 400.0, "Complete Blood Count — evaluates overall health and detects disorders.", "Pathology"),
+            ("CBC Test", 400.0, "Complete Blood Count - evaluates overall health and detects disorders.", "Pathology"),
             ("C Reactive Protein Test", 500.0, "Measures CRP levels to detect inflammation or infection.", "Pathology"),
             ("Blood Sugar", 200.0, "Measures glucose levels in the blood for diabetes screening.", "Pathology"),
         ]

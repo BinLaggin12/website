@@ -23,11 +23,12 @@ from .schemas import (
 )
 from .test_params import PARAM_MAP
 from .pdf_generator import generate_report_pdf, REPORTS_DIR
+from . import sheets_sync
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
-ADMIN_TOKENS: dict[str, str] = {}
+ADMIN_TOKENS: dict[str, dict] = {}
 
 
 def _hash_password(password: str) -> str:
@@ -67,6 +68,11 @@ def create_fastapi_app(database: Database) -> FastAPI:
             raise HTTPException(401, "Invalid token")
         return ADMIN_TOKENS[token]
 
+    def require_owner(current_admin: dict = Depends(require_admin)):
+        if current_admin.get("role") != "owner":
+            raise HTTPException(403, "Only the owner can perform this action")
+        return current_admin
+
     # --- Auth endpoints ---
 
     @app.post("/api/admin/login")
@@ -77,7 +83,7 @@ def create_fastapi_app(database: Database) -> FastAPI:
         if user["password_hash"] != _hash_password(body.password):
             raise HTTPException(401, "Invalid credentials")
         token = str(uuid.uuid4())
-        ADMIN_TOKENS[token] = body.username
+        ADMIN_TOKENS[token] = {"username": body.username, "role": user["role"]}
         return AdminTokenResponse(token=token, username=body.username, role=user["role"])
 
     @app.post("/api/admin/logout")
@@ -129,7 +135,7 @@ def create_fastapi_app(database: Database) -> FastAPI:
         return database.list_all_reports()
 
     @app.post("/api/admin/report/create")
-    def admin_create_report(body: AdminReportCreate, _=Depends(require_admin)):
+    def admin_create_report(body: AdminReportCreate, _=Depends(require_owner)):
         booking = database.get_booking(body.booking_id)
         if not booking:
             raise HTTPException(404, "Booking not found")
@@ -148,7 +154,7 @@ def create_fastapi_app(database: Database) -> FastAPI:
         }
 
     @app.put("/api/admin/report/{report_id}")
-    def admin_update_report(report_id: str, body: ReportCreate, _=Depends(require_admin)):
+    def admin_update_report(report_id: str, body: ReportCreate, _=Depends(require_owner)):
         database.update_report(report_id, body.results)
         return {"status": "ok"}
 
@@ -166,7 +172,7 @@ def create_fastapi_app(database: Database) -> FastAPI:
         raise HTTPException(404, f"Unknown test: {test_name}")
 
     @app.post("/api/admin/bookings/{booking_id}/generate-pdf")
-    def admin_generate_pdf(booking_id: str, body: GeneratePdfRequest, _=Depends(require_admin)):
+    def admin_generate_pdf(booking_id: str, body: GeneratePdfRequest, _=Depends(require_owner)):
         """
         Generate a PDF report for a booking using the submitted parameter values.
         1. Fetch the booking and associated report (or create one).
@@ -277,6 +283,34 @@ def create_fastapi_app(database: Database) -> FastAPI:
     def admin_update_test(test_id: str, body: TestUpdate, _=Depends(require_admin)):
         database.update_test(test_id, body.name, body.price, body.description, body.category)
         return {"status": "ok"}
+
+    @app.post("/api/admin/sync-prices")
+    def admin_sync_prices(_=Depends(require_owner)):
+        """
+        Sync test catalog from Google Sheets.
+        1. Fetch products from the registered Google Sheet via gspread.
+        2. Delete all existing tests from the database.
+        3. Upsert each product from the sheet.
+        4. Return the updated test list.
+        """
+        try:
+            products = sheets_sync.fetch_products()
+        except Exception as exc:
+            raise HTTPException(502, f"Failed to read Google Sheet: {exc}")
+        database.delete_all_tests()
+        for p in products:
+            database.upsert_test_by_name(p["name"], p["price"], p["description"], p["category"])
+        tests = database.list_tests()
+        return [
+            TestResponse(
+                test_id=str(t.test_id),
+                name=t.name,
+                price=t.price,
+                description=t.description,
+                category=t.category,
+            )
+            for t in tests
+        ]
 
     # --- Patient endpoints ---
 

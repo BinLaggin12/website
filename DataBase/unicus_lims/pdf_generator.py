@@ -194,7 +194,7 @@ def generate_report_pdf(
     # ------------------------------------------------------------------
     # TITLE
     # ------------------------------------------------------------------
-    elements.append(Paragraph(f"<b>Test Report  —  {test_name}</b>", style_heading))
+    elements.append(Paragraph(f"<b>Test Report - {test_name}</b>", style_heading))
     elements.append(Spacer(1, 4 * mm))
 
     # ------------------------------------------------------------------

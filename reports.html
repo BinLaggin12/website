@@ -179,7 +179,7 @@ var html = '<div style="text-align:left;">';
 html += '<h3 style="margin-top:0;">Your Bookings</h3>';
 bookings.forEach(function(b) {
 html += '<div style="padding:12px;margin:8px 0;background:#f5f5f5;border-radius:6px;border-left:4px solid #167ce9;">';
-html += '<strong>' + b.test_name + '</strong> — ' + b.status;
+html += '<strong>' + b.test_name + '</strong> - ' + b.status;
 html += '<br><small>Booking ID: ' + b.booking_id + '</small>';
 html += '<br><small>' + b.created_at + '</small>';
 html += '<br><button class="btn2" style="width:auto;padding:8px 16px;margin-top:8px;font-size:0.85em;" onclick="downloadReport(\'' + b.booking_id + '\')">VIEW REPORT</button>';

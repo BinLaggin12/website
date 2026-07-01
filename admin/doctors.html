@@ -11,7 +11,7 @@
 <body>
 <div class="admin-header">
     <div class="brand">
-        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics — Admin</a>
+        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics - <span id="brandRole">Admin</span></a>
     </div>
     <div class="user-info">
         <span id="userDisplay"></span>
@@ -80,7 +80,10 @@
 <script src="script.js"></script>
 <script>
 requireAuth();
+var ROLE = localStorage.getItem('admin_role');
 document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
+var brandRole = document.getElementById('brandRole');
+if (brandRole) brandRole.textContent = ROLE === 'owner' ? 'Owner' : 'Admin';
 
 function loadDoctors() {
     fetch('/api/doctors').then(function(r) { return r.json(); }).then(function(doctors) {
