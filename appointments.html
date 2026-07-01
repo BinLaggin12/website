@@ -171,6 +171,25 @@ function loadTestOptions() {
   });
 }
 loadTestOptions();
+function getUrlParam(name) {
+    var match = location.search.match(new RegExp('[?&]' + name + '=([^&]*)'));
+    return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : null;
+}
+var preselectedTest = getUrlParam('test');
+if (preselectedTest) {
+    var sel = document.getElementById('testSelect');
+    var checkInterval = setInterval(function() {
+        if (sel.options.length > 1) {
+            for (var i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === preselectedTest) {
+                    sel.value = preselectedTest;
+                    break;
+                }
+            }
+            clearInterval(checkInterval);
+        }
+    }, 50);
+}
 document.getElementById('bookingForm').addEventListener('submit', function(e) {
 e.preventDefault();
 var btn = this.querySelector('button');

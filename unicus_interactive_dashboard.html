@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicus Health — Interactive Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-1.58.5.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: white; overflow: hidden;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+        .dashboard {
+            width: 13in; height: 10in; display: flex;
+            background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 8px; overflow: hidden;
+        }
+        .left-panel {
+            width: 3in; flex-shrink: 0; height: 100%; background: white;
+            border-right: 2px solid #e9ecef; overflow-y: auto; padding: 6px;
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .left-panel::-webkit-scrollbar { display: none; }
+        .right-panel { flex: 1; height: 100%; background: white; position: relative; }
+        .logo-grid { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px; }
+        .logo-grid .logo-item { flex: 0 0 calc(33.33% - 5px); }
+        .logo-item {
+            background: white; border-radius: 8px; padding: 6px 8px; text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: all 0.3s ease;
+            cursor: pointer; border: 2px solid transparent;
+        }
+        .logo-item:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .logo-item.highlighted { border-color: #e67e22; background: #fef5e7; transform: scale(1.05); }
+        .logo-img { width: 36px; height: 36px; object-fit: contain; margin-bottom: 3px; }
+        .logo-name { font-size: 11px; color: #555; word-wrap: break-word; font-weight: 500; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .category-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 8px; margin-top: 3px; font-weight: 500; }
+        .badge-health-package { background: #d6eaf8; color: #1a5276; }
+        .badge-diabetic-basic { background: #fadbd8; color: #922b21; }
+        .badge-thyroid-profile { background: #e8daef; color: #6c3483; }
+        .badge-cbc { background: #d5f5e3; color: #1e8449; }
+        .badge-hba1c { background: #fdebd0; color: #935116; }
+        .badge-other { background: #f0f0f0; color: #666; }
+        .details-panel {
+            position: absolute; top: 14px; right: 14px;
+            background: rgba(255,255,255,0.96); border-radius: 12px;
+            padding: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            max-width: 280px; display: none; z-index: 1000;
+        }
+        .details-panel.show { display: block; }
+        .details-icon { width: 56px; height: 56px; object-fit: contain; margin: 0 auto 10px; display: block; }
+        .details-name { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 6px; color: #2c3e50; line-height: 1.3; }
+        .details-price { font-size: 20px; font-weight: 700; color: #27ae60; text-align: center; margin-bottom: 8px; }
+        .details-info { font-size: 13px; color: #555; line-height: 1.6; }
+        .details-info strong { color: #2c3e50; }
+        .details-info a { color: #e67e22; font-weight: 600; }
+        #sunburst-container { width: 100%; height: 100%; }
+        .panel-header {
+            padding: 10px 12px; font-size: 13px; font-weight: 600;
+            color: #555; text-transform: uppercase; letter-spacing: 1px;
+            border-bottom: 1px solid #e9ecef; margin-bottom: 8px; text-align: center;
+        }
+        @media (max-width: 768px) {
+            body { overflow: auto; align-items: flex-start; }
+            .dashboard { width: 100vw; height: 100vh; flex-direction: column; border-radius: 0; box-shadow: none; }
+            .left-panel { width: 100%; height: auto; max-height: 35vh; flex-shrink: 0; border-right: none; border-bottom: 2px solid #e9ecef; overflow-y: auto; padding: 4px; }
+            .left-panel::-webkit-scrollbar { display: none; }
+            .right-panel { flex: 1; width: 100%; min-height: 65vh; }
+            .logo-grid { display: grid; grid-template-rows: repeat(2, auto); grid-auto-flow: column; overflow-x: auto; gap: 6px; padding: 6px; }
+            .logo-item { width: 110px; padding: 6px 4px; }
+            .logo-img { width: 28px; height: 28px; }
+            .logo-name { font-size: 12px; display: block; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; -webkit-line-clamp: unset; }
+            .category-badge { font-size: 9px; padding: 1px 6px; }
+            .details-panel { top: 10px; right: 10px; max-width: 240px; padding: 14px; }
+            .details-icon { width: 40px; height: 40px; }
+            .details-name { font-size: 16px; }
+            .details-price { font-size: 18px; }
+            .details-info { font-size: 13px; }
+            .panel-header { font-size: 13px; padding: 6px 8px; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="left-panel">
+        <div class="panel-header">Packages</div>
+        <div class="logo-grid" id="logoGrid"><div class="logo-item" data-entity="Health Package: Complete Blood Count (CBC) [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Complete Blood Count (CBC) [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Complete Blood Count (CBC) [1]" class="logo-img">
+      <div class="logo-name">Complete Blood Count (CBC)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/7787/7787783.png" alt="Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [1]" class="logo-img">
+      <div class="logo-name">Glycosylated Haemoglobin (GHB/HbA1c)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Lipid Profile [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Lipid Profile [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Lipid Profile [1]" class="logo-img">
+      <div class="logo-name">Lipid Profile</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Thyroid Profile-I (TFT) [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Thyroid Profile-I (TFT) [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Health Package: Thyroid Profile-I (TFT) [1]" class="logo-img">
+      <div class="logo-name">Thyroid Profile-I (TFT)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Erythrocyte Sedimentation Rate (ESR) [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Erythrocyte Sedimentation Rate (ESR) [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Erythrocyte Sedimentation Rate (ESR) [1]" class="logo-img">
+      <div class="logo-name">Erythrocyte Sedimentation Rate (ESR)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Calcium - Serum [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Calcium - Serum [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/2853/2853271.png" alt="Health Package: Calcium - Serum [1]" class="logo-img">
+      <div class="logo-name">Calcium - Serum</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Glucose - Fasting (F) [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Glucose - Fasting (F) [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/1048/1048953.png" alt="Health Package: Glucose - Fasting (F) [1]" class="logo-img">
+      <div class="logo-name">Glucose - Fasting (F)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Kidney Function Test (KFT) - Basic [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Kidney Function Test (KFT) - Basic [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/954/954394.png" alt="Health Package: Kidney Function Test (KFT) - Basic [1]" class="logo-img">
+      <div class="logo-name">Kidney Function Test (KFT) - Basic</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Liver Function Test (LFT) [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Liver Function Test (LFT) [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/508/508747.png" alt="Health Package: Liver Function Test (LFT) [1]" class="logo-img">
+      <div class="logo-name">Liver Function Test (LFT)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Iron Deficiency Profile I [1]" data-category="Health Package" onclick="highlightEntity('Health Package: Iron Deficiency Profile I [1]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Iron Deficiency Profile I [1]" class="logo-img">
+      <div class="logo-name">Iron Deficiency Profile I</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Glucose - Fasting (F) [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Glucose - Fasting (F) [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Glucose - Fasting (F) [2]" class="logo-img">
+      <div class="logo-name">Glucose - Fasting (F)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Iron Deficiency Profile I [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Iron Deficiency Profile I [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Iron Deficiency Profile I [2]" class="logo-img">
+      <div class="logo-name">Iron Deficiency Profile I</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Lipid Profile [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Lipid Profile [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Lipid Profile [2]" class="logo-img">
+      <div class="logo-name">Lipid Profile</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Thyroid Profile-I (TFT) [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Thyroid Profile-I (TFT) [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Health Package: Thyroid Profile-I (TFT) [2]" class="logo-img">
+      <div class="logo-name">Thyroid Profile-I (TFT)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Erythrocyte Sedimentation Rate (ESR) [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Erythrocyte Sedimentation Rate (ESR) [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Erythrocyte Sedimentation Rate (ESR) [2]" class="logo-img">
+      <div class="logo-name">Erythrocyte Sedimentation Rate (ESR)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: 25-Hydroxy Vitamin D3" data-category="Health Package" onclick="highlightEntity('Health Package: 25-Hydroxy Vitamin D3')">
+      <img src="https://cdn-icons-png.flaticon.com/512/2853/2853271.png" alt="Health Package: 25-Hydroxy Vitamin D3" class="logo-img">
+      <div class="logo-name">25-Hydroxy Vitamin D3</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Calcium - Serum [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Calcium - Serum [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/2853/2853271.png" alt="Health Package: Calcium - Serum [2]" class="logo-img">
+      <div class="logo-name">Calcium - Serum</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: CUE - Complete Urine Analysis" data-category="Health Package" onclick="highlightEntity('Health Package: CUE - Complete Urine Analysis')">
+      <img src="https://cdn-icons-png.flaticon.com/512/954/954394.png" alt="Health Package: CUE - Complete Urine Analysis" class="logo-img">
+      <div class="logo-name">CUE - Complete Urine Analysis</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Glomerular Filtration Rate (eGFR)" data-category="Health Package" onclick="highlightEntity('Health Package: Glomerular Filtration Rate (eGFR)')">
+      <img src="https://cdn-icons-png.flaticon.com/512/954/954394.png" alt="Health Package: Glomerular Filtration Rate (eGFR)" class="logo-img">
+      <div class="logo-name">Glomerular Filtration Rate (eGFR)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [2]" class="logo-img">
+      <div class="logo-name">Glycosylated Haemoglobin (GHB/HbA1c)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Kidney Function Test (KFT) - Basic [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Kidney Function Test (KFT) - Basic [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/954/954394.png" alt="Health Package: Kidney Function Test (KFT) - Basic [2]" class="logo-img">
+      <div class="logo-name">Kidney Function Test (KFT) - Basic</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Liver Function Test (LFT) [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Liver Function Test (LFT) [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/508/508747.png" alt="Health Package: Liver Function Test (LFT) [2]" class="logo-img">
+      <div class="logo-name">Liver Function Test (LFT)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Vitamin - B12" data-category="Health Package" onclick="highlightEntity('Health Package: Vitamin - B12')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Vitamin - B12" class="logo-img">
+      <div class="logo-name">Vitamin - B12</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Health Package: Complete Blood Count (CBC) [2]" data-category="Health Package" onclick="highlightEntity('Health Package: Complete Blood Count (CBC) [2]')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Health Package: Complete Blood Count (CBC) [2]" class="logo-img">
+      <div class="logo-name">Complete Blood Count (CBC)</div>
+      <div class="category-badge badge-health-package">Health Package</div>
+    </div>
+<div class="logo-item" data-entity="Diabetic Basic: Fasting blood sugar" data-category="Diabetic Basic" onclick="highlightEntity('Diabetic Basic: Fasting blood sugar')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Diabetic Basic: Fasting blood sugar" class="logo-img">
+      <div class="logo-name">Fasting blood sugar</div>
+      <div class="category-badge badge-diabetic-basic">Diabetic Basic</div>
+    </div>
+<div class="logo-item" data-entity="Diabetic Basic: Post prandial blood sugar" data-category="Diabetic Basic" onclick="highlightEntity('Diabetic Basic: Post prandial blood sugar')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Diabetic Basic: Post prandial blood sugar" class="logo-img">
+      <div class="logo-name">Post prandial blood sugar</div>
+      <div class="category-badge badge-diabetic-basic">Diabetic Basic</div>
+    </div>
+<div class="logo-item" data-entity="Diabetic Basic: HbA1c" data-category="Diabetic Basic" onclick="highlightEntity('Diabetic Basic: HbA1c')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="Diabetic Basic: HbA1c" class="logo-img">
+      <div class="logo-name">HbA1c</div>
+      <div class="category-badge badge-diabetic-basic">Diabetic Basic</div>
+    </div>
+<div class="logo-item" data-entity="Thyroid Profile: TSH" data-category="Thyroid Profile" onclick="highlightEntity('Thyroid Profile: TSH')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Thyroid Profile: TSH" class="logo-img">
+      <div class="logo-name">TSH</div>
+      <div class="category-badge badge-thyroid-profile">Thyroid Profile</div>
+    </div>
+<div class="logo-item" data-entity="Thyroid Profile: FT3" data-category="Thyroid Profile" onclick="highlightEntity('Thyroid Profile: FT3')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Thyroid Profile: FT3" class="logo-img">
+      <div class="logo-name">FT3</div>
+      <div class="category-badge badge-thyroid-profile">Thyroid Profile</div>
+    </div>
+<div class="logo-item" data-entity="Thyroid Profile: FT4" data-category="Thyroid Profile" onclick="highlightEntity('Thyroid Profile: FT4')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Thyroid Profile: FT4" class="logo-img">
+      <div class="logo-name">FT4</div>
+      <div class="category-badge badge-thyroid-profile">Thyroid Profile</div>
+    </div>
+<div class="logo-item" data-entity="Thyroid Profile: T3" data-category="Thyroid Profile" onclick="highlightEntity('Thyroid Profile: T3')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Thyroid Profile: T3" class="logo-img">
+      <div class="logo-name">T3</div>
+      <div class="category-badge badge-thyroid-profile">Thyroid Profile</div>
+    </div>
+<div class="logo-item" data-entity="Thyroid Profile: T4" data-category="Thyroid Profile" onclick="highlightEntity('Thyroid Profile: T4')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Thyroid Profile: T4" class="logo-img">
+      <div class="logo-name">T4</div>
+      <div class="category-badge badge-thyroid-profile">Thyroid Profile</div>
+    </div>
+<div class="logo-item" data-entity="Thyroid Profile: Anti-TPO" data-category="Thyroid Profile" onclick="highlightEntity('Thyroid Profile: Anti-TPO')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Thyroid Profile: Anti-TPO" class="logo-img">
+      <div class="logo-name">Anti-TPO</div>
+      <div class="category-badge badge-thyroid-profile">Thyroid Profile</div>
+    </div>
+<div class="logo-item" data-entity="Thyroid Profile: Anti-Tg" data-category="Thyroid Profile" onclick="highlightEntity('Thyroid Profile: Anti-Tg')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9718/9718507.png" alt="Thyroid Profile: Anti-Tg" class="logo-img">
+      <div class="logo-name">Anti-Tg</div>
+      <div class="category-badge badge-thyroid-profile">Thyroid Profile</div>
+    </div>
+<div class="logo-item" data-entity="CBC: Complete Blood Count" data-category="CBC" onclick="highlightEntity('CBC: Complete Blood Count')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="CBC: Complete Blood Count" class="logo-img">
+      <div class="logo-name">Complete Blood Count</div>
+      <div class="category-badge badge-cbc">CBC</div>
+    </div>
+<div class="logo-item" data-entity="CBC: Red Blood Cells (RBCs)" data-category="CBC" onclick="highlightEntity('CBC: Red Blood Cells (RBCs)')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="CBC: Red Blood Cells (RBCs)" class="logo-img">
+      <div class="logo-name">Red Blood Cells (RBCs)</div>
+      <div class="category-badge badge-cbc">CBC</div>
+    </div>
+<div class="logo-item" data-entity="CBC: White Blood Cells (WBCs)" data-category="CBC" onclick="highlightEntity('CBC: White Blood Cells (WBCs)')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="CBC: White Blood Cells (WBCs)" class="logo-img">
+      <div class="logo-name">White Blood Cells (WBCs)</div>
+      <div class="category-badge badge-cbc">CBC</div>
+    </div>
+<div class="logo-item" data-entity="CBC: Platelets" data-category="CBC" onclick="highlightEntity('CBC: Platelets')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="CBC: Platelets" class="logo-img">
+      <div class="logo-name">Platelets</div>
+      <div class="category-badge badge-cbc">CBC</div>
+    </div>
+<div class="logo-item" data-entity="HbA1c: HbA1c Test" data-category="Diabetic Basic" onclick="highlightEntity('HbA1c: HbA1c Test')">
+      <img src="https://cdn-icons-png.flaticon.com/512/9851/9851838.png" alt="HbA1c: HbA1c Test" class="logo-img">
+      <div class="logo-name">HbA1c Test</div>
+      <div class="category-badge badge-diabetic-basic">Diabetic Basic</div>
+    </div>
+</div>
+    </div>
+    <div class="right-panel">
+        <div id="sunburst-container"></div>
+        <div class="details-panel" id="detailsPanel">
+            <img id="detailsIcon" class="details-icon" src="" alt="">
+            <div id="detailsName" class="details-name"></div>
+            <div id="detailsPrice" class="details-price"></div>
+            <div id="detailsInfo" class="details-info"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+var sunburstData = {"labels":["Unicus Health<br>Packages","Health<br>Package","Health Package: Complete Blood Count (CBC) [1]","Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [1]","Health Package: Lipid Profile [1]","Health Package: Thyroid Profile-I (TFT) [1]","Health Package: Erythrocyte Sedimentation Rate (ESR) [1]","Health Package: Calcium - Serum [1]","Health Package: Glucose - Fasting (F) [1]","Health Package: Kidney Function Test (KFT) - Basic [1]","Health Package: Liver Function Test (LFT) [1]","Health Package: Iron Deficiency Profile I [1]","Health Package: Glucose - Fasting (F) [2]","Health Package: Iron Deficiency Profile I [2]","Health Package: Lipid Profile [2]","Health Package: Thyroid Profile-I (TFT) [2]","Health Package: Erythrocyte Sedimentation Rate (ESR) [2]","Health Package: 25-Hydroxy Vitamin D3","Health Package: Calcium - Serum [2]","Health Package: CUE - Complete Urine Analysis","Health Package: Glomerular Filtration Rate (eGFR)","Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [2]","Health Package: Kidney Function Test (KFT) - Basic [2]","Health Package: Liver Function Test (LFT) [2]","Health Package: Vitamin - B12","Health Package: Complete Blood Count (CBC) [2]","Diabetic Basic","Diabetic Basic: Fasting blood sugar","Diabetic Basic: Post prandial blood sugar","Diabetic Basic: HbA1c","HbA1c: HbA1c Test","Thyroid Profile","Thyroid Profile: TSH","Thyroid Profile: FT3","Thyroid Profile: FT4","Thyroid Profile: T3","Thyroid Profile: T4","Thyroid Profile: Anti-TPO","Thyroid Profile: Anti-Tg","CBC","CBC: Complete Blood Count","CBC: Red Blood Cells (RBCs)","CBC: White Blood Cells (WBCs)","CBC: Platelets"],"parents":["","Unicus Health<br>Packages","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Health<br>Package","Unicus Health<br>Packages","Diabetic Basic","Diabetic Basic","Diabetic Basic","Diabetic Basic","Unicus Health<br>Packages","Thyroid Profile","Thyroid Profile","Thyroid Profile","Thyroid Profile","Thyroid Profile","Thyroid Profile","Thyroid Profile","Unicus Health<br>Packages","CBC","CBC","CBC","CBC"],"values":[39,24,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,1,1,1,1,7,1,1,1,1,1,1,1,4,1,1,1,1],"colors":["#2C3E50","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#4A90D9","#E74C3C","#E74C3C","#E74C3C","#E74C3C","#E74C3C","#8E44AD","#8E44AD","#8E44AD","#8E44AD","#8E44AD","#8E44AD","#8E44AD","#8E44AD","#27AE60","#27AE60","#27AE60","#27AE60","#27AE60"],"hover_text":["Unicus Health Packages","<b>Health Package<\/b><br>Packages: 24<br>Total: ₹50,000","<b>Health Package<\/b><br>Complete Blood Count (CBC)<br>₹ 1,500<br>Body: blood, blood<br><a href='https://cdn-icons-png.flaticon.com/512/9851/9851838.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Glycosylated Haemoglobin (GHB/HbA1c)<br>₹ 1,500<br>Body: lungs, lungs<br><a href='https://cdn-icons-png.flaticon.com/512/7787/7787783.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Lipid Profile<br>₹ 1,500<br>Body: blood, neck<br><a href='https://cdn-icons-png.flaticon.com/512/9718/9718507.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Thyroid Profile-I (TFT)<br>₹ 1,500<br>Body: neck, kidneys<br><a href='https://cdn-icons-png.flaticon.com/512/954/954394.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Erythrocyte Sedimentation Rate (ESR)<br>₹ 1,500<br>Body: blood, liver<br><a href='https://cdn-icons-png.flaticon.com/512/508/508747.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Calcium - Serum<br>₹ 1,500<br>Body: bone, bone<br><a href='https://cdn-icons-png.flaticon.com/512/2853/2853271.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Glucose - Fasting (F)<br>₹ 1,500<br>Body: blood, eyes<br><a href='https://cdn-icons-png.flaticon.com/512/802/802067.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Kidney Function Test (KFT) - Basic<br>₹ 1,500<br>Body: kidneys, ear<br><a href='https://cdn-icons-png.flaticon.com/512/508/508740.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Liver Function Test (LFT)<br>₹ 1,500<br>Body: liver, nose <br><a href='https://cdn-icons-png.flaticon.com/512/10509/10509975.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Iron Deficiency Profile I<br>₹ 1,500<br>Body: blood, heart<br><a href='https://cdn-icons-png.flaticon.com/512/508/508735.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Glucose - Fasting (F)<br>₹ 2,500<br>Body: blood, stomach<br><a href='https://cdn-icons-png.flaticon.com/512/508/508794.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Iron Deficiency Profile I<br>₹ 2,500<br>Body: blood, blood<br><a href='https://cdn-icons-png.flaticon.com/512/9851/9851838.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Lipid Profile<br>₹ 2,500<br>Body: blood, lungs<br><a href='https://cdn-icons-png.flaticon.com/512/7787/7787783.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Thyroid Profile-I (TFT)<br>₹ 2,500<br>Body: neck, neck<br><a href='https://cdn-icons-png.flaticon.com/512/9718/9718507.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Erythrocyte Sedimentation Rate (ESR)<br>₹ 2,500<br>Body: blood, kidneys<br><a href='https://cdn-icons-png.flaticon.com/512/954/954394.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>25-Hydroxy Vitamin D3<br>₹ 2,500<br>Body: bone, liver<br><a href='https://cdn-icons-png.flaticon.com/512/508/508747.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Calcium - Serum<br>₹ 2,500<br>Body: bone, bone<br><a href='https://cdn-icons-png.flaticon.com/512/2853/2853271.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>CUE - Complete Urine Analysis<br>₹ 2,500<br>Body: kidneys, eyes<br><a href='https://cdn-icons-png.flaticon.com/512/802/802067.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Glomerular Filtration Rate (eGFR)<br>₹ 2,500<br>Body: kidneys, ear<br><a href='https://cdn-icons-png.flaticon.com/512/508/508740.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Glycosylated Haemoglobin (GHB/HbA1c)<br>₹ 2,500<br>Body: blood, nose <br><a href='https://cdn-icons-png.flaticon.com/512/10509/10509975.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Kidney Function Test (KFT) - Basic<br>₹ 2,500<br>Body: kidneys, heart<br><a href='https://cdn-icons-png.flaticon.com/512/508/508735.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Liver Function Test (LFT)<br>₹ 2,500<br>Body: liver, stomach<br><a href='https://cdn-icons-png.flaticon.com/512/508/508794.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Vitamin - B12<br>₹ 2,500<br>Body: blood, blood<br><a href='https://cdn-icons-png.flaticon.com/512/9851/9851838.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Health Package<\/b><br>Complete Blood Count (CBC)<br>₹ 2,500<br>Body: blood, lungs<br><a href='https://cdn-icons-png.flaticon.com/512/7787/7787783.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Diabetic Basic<\/b><br>Packages: 4<br>Total: ₹2,300","<b>Diabetic Basic<\/b><br>Fasting blood sugar<br>₹ 600<br>Body: blood, neck<br><a href='https://cdn-icons-png.flaticon.com/512/9718/9718507.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Diabetic Basic<\/b><br>Post prandial blood sugar<br>₹ 600<br>Body: blood, kidneys<br><a href='https://cdn-icons-png.flaticon.com/512/954/954394.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Diabetic Basic<\/b><br>HbA1c<br>₹ 600<br>Body: blood, liver<br><a href='https://cdn-icons-png.flaticon.com/512/508/508747.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>HbA1c<\/b><br>HbA1c Test<br>₹ 500<br>Body: blood, bone<br><a href='https://cdn-icons-png.flaticon.com/512/2853/2853271.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Thyroid Profile<\/b><br>Packages: 7<br>Total: ₹2,800","<b>Thyroid Profile<\/b><br>TSH<br>₹ 400<br>Body: neck, bone<br><a href='https://cdn-icons-png.flaticon.com/512/2853/2853271.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Thyroid Profile<\/b><br>FT3<br>₹ 400<br>Body: neck, eyes<br><a href='https://cdn-icons-png.flaticon.com/512/802/802067.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Thyroid Profile<\/b><br>FT4<br>₹ 400<br>Body: neck, ear<br><a href='https://cdn-icons-png.flaticon.com/512/508/508740.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Thyroid Profile<\/b><br>T3<br>₹ 400<br>Body: neck, nose <br><a href='https://cdn-icons-png.flaticon.com/512/10509/10509975.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Thyroid Profile<\/b><br>T4<br>₹ 400<br>Body: neck, heart<br><a href='https://cdn-icons-png.flaticon.com/512/508/508735.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Thyroid Profile<\/b><br>Anti-TPO<br>₹ 400<br>Body: neck, stomach<br><a href='https://cdn-icons-png.flaticon.com/512/508/508794.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>Thyroid Profile<\/b><br>Anti-Tg<br>₹ 400<br>Body: neck, blood<br><a href='https://cdn-icons-png.flaticon.com/512/9851/9851838.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>CBC<\/b><br>Packages: 4<br>Total: ₹800","<b>CBC<\/b><br>Complete Blood Count<br>₹ 200<br>Body: blood, lungs<br><a href='https://cdn-icons-png.flaticon.com/512/7787/7787783.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>CBC<\/b><br>Red Blood Cells (RBCs)<br>₹ 200<br>Body: blood, neck<br><a href='https://cdn-icons-png.flaticon.com/512/9718/9718507.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>CBC<\/b><br>White Blood Cells (WBCs)<br>₹ 200<br>Body: blood, kidneys<br><a href='https://cdn-icons-png.flaticon.com/512/954/954394.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>","<b>CBC<\/b><br>Platelets<br>₹ 200<br>Body: blood, liver<br><a href='https://cdn-icons-png.flaticon.com/512/508/508747.png' target='_blank' style='color:#fff;text-decoration:underline;'>Book Now<\/a>"],"custom_data":[{"logo":"","entity":"Unicus Health<br>Packages","description":"All health packages","price":"","tests":"","group":""},{"logo":"","entity":"Health<br>Package","description":"All 24 packages","price":"","tests":"","group":"Health Package"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Complete Blood Count (CBC) [1]","description":"Complete Blood Count (CBC)","price":"1500","tests":"Complete Blood Count (CBC)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/7787/7787783.png","entity":"Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [1]","description":"Glycosylated Haemoglobin (GHB/HbA1c)","price":"1500","tests":"Glycosylated Haemoglobin (GHB/HbA1c)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/7787/7787783.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Lipid Profile [1]","description":"Lipid Profile","price":"1500","tests":"Lipid Profile","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Health Package: Thyroid Profile-I (TFT) [1]","description":"Thyroid Profile-I (TFT)","price":"1500","tests":"Thyroid Profile-I (TFT)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/954/954394.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Erythrocyte Sedimentation Rate (ESR) [1]","description":"Erythrocyte Sedimentation Rate (ESR)","price":"1500","tests":"Erythrocyte Sedimentation Rate (ESR)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508747.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/2853/2853271.png","entity":"Health Package: Calcium - Serum [1]","description":"Calcium - Serum","price":"1500","tests":"Calcium - Serum","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/2853/2853271.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/1048/1048953.png","entity":"Health Package: Glucose - Fasting (F) [1]","description":"Glucose - Fasting (F)","price":"1500","tests":"Glucose - Fasting (F)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/802/802067.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/954/954394.png","entity":"Health Package: Kidney Function Test (KFT) - Basic [1]","description":"Kidney Function Test (KFT) - Basic","price":"1500","tests":"Kidney Function Test (KFT) - Basic","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508740.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/508/508747.png","entity":"Health Package: Liver Function Test (LFT) [1]","description":"Liver Function Test (LFT)","price":"1500","tests":"Liver Function Test (LFT)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/10509/10509975.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Iron Deficiency Profile I [1]","description":"Iron Deficiency Profile I","price":"1500","tests":"Iron Deficiency Profile I","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508735.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Glucose - Fasting (F) [2]","description":"Glucose - Fasting (F)","price":"2500","tests":"Glucose - Fasting (F)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508794.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Iron Deficiency Profile I [2]","description":"Iron Deficiency Profile I","price":"2500","tests":"Iron Deficiency Profile I","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Lipid Profile [2]","description":"Lipid Profile","price":"2500","tests":"Lipid Profile","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/7787/7787783.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Health Package: Thyroid Profile-I (TFT) [2]","description":"Thyroid Profile-I (TFT)","price":"2500","tests":"Thyroid Profile-I (TFT)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Erythrocyte Sedimentation Rate (ESR) [2]","description":"Erythrocyte Sedimentation Rate (ESR)","price":"2500","tests":"Erythrocyte Sedimentation Rate (ESR)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/954/954394.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/2853/2853271.png","entity":"Health Package: 25-Hydroxy Vitamin D3","description":"25-Hydroxy Vitamin D3","price":"2500","tests":"25-Hydroxy Vitamin D3","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508747.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/2853/2853271.png","entity":"Health Package: Calcium - Serum [2]","description":"Calcium - Serum","price":"2500","tests":"Calcium - Serum","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/2853/2853271.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/954/954394.png","entity":"Health Package: CUE - Complete Urine Analysis","description":"CUE - Complete Urine Analysis","price":"2500","tests":"CUE - Complete Urine Analysis","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/802/802067.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/954/954394.png","entity":"Health Package: Glomerular Filtration Rate (eGFR)","description":"Glomerular Filtration Rate (eGFR)","price":"2500","tests":"Glomerular Filtration Rate (eGFR)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508740.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Glycosylated Haemoglobin (GHB/HbA1c) [2]","description":"Glycosylated Haemoglobin (GHB/HbA1c)","price":"2500","tests":"Glycosylated Haemoglobin (GHB/HbA1c)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/10509/10509975.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/954/954394.png","entity":"Health Package: Kidney Function Test (KFT) - Basic [2]","description":"Kidney Function Test (KFT) - Basic","price":"2500","tests":"Kidney Function Test (KFT) - Basic","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508735.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/508/508747.png","entity":"Health Package: Liver Function Test (LFT) [2]","description":"Liver Function Test (LFT)","price":"2500","tests":"Liver Function Test (LFT)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/508/508794.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Vitamin - B12","description":"Vitamin - B12","price":"2500","tests":"Vitamin - B12","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Health Package: Complete Blood Count (CBC) [2]","description":"Complete Blood Count (CBC)","price":"2500","tests":"Complete Blood Count (CBC)","group":"Health Package","link":"https://cdn-icons-png.flaticon.com/512/7787/7787783.png"},{"logo":"","entity":"Diabetic Basic","description":"All 4 packages","price":"","tests":"","group":"Diabetic Basic"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Diabetic Basic: Fasting blood sugar","description":"Fasting blood sugar","price":"600","tests":"Fasting blood sugar","group":"Diabetic Basic","link":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Diabetic Basic: Post prandial blood sugar","description":"Post prandial blood sugar","price":"600","tests":"Post prandial blood sugar","group":"Diabetic Basic","link":"https://cdn-icons-png.flaticon.com/512/954/954394.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"Diabetic Basic: HbA1c","description":"HbA1c","price":"600","tests":"HbA1c","group":"Diabetic Basic","link":"https://cdn-icons-png.flaticon.com/512/508/508747.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"HbA1c: HbA1c Test","description":"HbA1c Test","price":"500","tests":"HbA1c Test","group":"Diabetic Basic","link":"https://cdn-icons-png.flaticon.com/512/2853/2853271.png"},{"logo":"","entity":"Thyroid Profile","description":"All 7 packages","price":"","tests":"","group":"Thyroid Profile"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Thyroid Profile: TSH","description":"TSH","price":"400","tests":"TSH","group":"Thyroid Profile","link":"https://cdn-icons-png.flaticon.com/512/2853/2853271.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Thyroid Profile: FT3","description":"FT3","price":"400","tests":"FT3","group":"Thyroid Profile","link":"https://cdn-icons-png.flaticon.com/512/802/802067.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Thyroid Profile: FT4","description":"FT4","price":"400","tests":"FT4","group":"Thyroid Profile","link":"https://cdn-icons-png.flaticon.com/512/508/508740.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Thyroid Profile: T3","description":"T3","price":"400","tests":"T3","group":"Thyroid Profile","link":"https://cdn-icons-png.flaticon.com/512/10509/10509975.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Thyroid Profile: T4","description":"T4","price":"400","tests":"T4","group":"Thyroid Profile","link":"https://cdn-icons-png.flaticon.com/512/508/508735.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Thyroid Profile: Anti-TPO","description":"Anti-TPO","price":"400","tests":"Anti-TPO","group":"Thyroid Profile","link":"https://cdn-icons-png.flaticon.com/512/508/508794.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png","entity":"Thyroid Profile: Anti-Tg","description":"Anti-Tg","price":"400","tests":"Anti-Tg","group":"Thyroid Profile","link":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png"},{"logo":"","entity":"CBC","description":"All 4 packages","price":"","tests":"","group":"CBC"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"CBC: Complete Blood Count","description":"Complete Blood Count","price":"200","tests":"Complete Blood Count","group":"CBC","link":"https://cdn-icons-png.flaticon.com/512/7787/7787783.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"CBC: Red Blood Cells (RBCs)","description":"Red Blood Cells (RBCs)","price":"200","tests":"Red Blood Cells (RBCs)","group":"CBC","link":"https://cdn-icons-png.flaticon.com/512/9718/9718507.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"CBC: White Blood Cells (WBCs)","description":"White Blood Cells (WBCs)","price":"200","tests":"White Blood Cells (WBCs)","group":"CBC","link":"https://cdn-icons-png.flaticon.com/512/954/954394.png"},{"logo":"https://cdn-icons-png.flaticon.com/512/9851/9851838.png","entity":"CBC: Platelets","description":"Platelets","price":"200","tests":"Platelets","group":"CBC","link":"https://cdn-icons-png.flaticon.com/512/508/508747.png"}],"textfont_colors":["white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white","white"],"textfont_sizes":[32,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24,24],"display_texts":["Unicus Health<br>Packages","Health<br>Package","Complete Blood Count<br>(CBC)","Glycosylated Haemoglobin<br>(GHB/HbA1c)","Lipid Profile","Thyroid Profile-I<br>(TFT)","Erythrocyte Sedimentation Rate<br>(ESR)","Calcium - Serum","Glucose - Fasting<br>(F)","Kidney Function Test<br>(KFT) - Basic","Liver Function Test<br>(LFT)","Iron Deficiency<br>Profile I","Glucose - Fasting<br>(F)","Iron Deficiency<br>Profile I","Lipid Profile","Thyroid Profile-I<br>(TFT)","Erythrocyte Sedimentation Rate<br>(ESR)","25-Hydroxy<br>Vitamin D3","Calcium - Serum","CUE - Complete<br>Urine Analysis","Glomerular Filtration Rate<br>(eGFR)","Glycosylated Haemoglobin<br>(GHB/HbA1c)","Kidney Function Test<br>(KFT) - Basic","Liver Function Test<br>(LFT)","Vitamin - B12","Complete Blood Count<br>(CBC)","Diabetic Basic","Fasting blood<br>sugar","Post prandial<br>blood sugar","HbA1c","HbA1c Test","Thyroid Profile","TSH","FT3","FT4","T3","T4","Anti-TPO","Anti-Tg","CBC","Complete Blood<br>Count","Red Blood Cells<br>(RBCs)","White Blood Cells<br>(WBCs)","Platelets"]};
+
+var layout = {
+    margin: {l: 0, r: 0, t: 0, b: 0},
+    paper_bgcolor: "white",
+    plot_bgcolor: "white",
+    font: {family: "Arial, sans-serif"}
+};
+
+var trace = {
+    type: "sunburst",
+    labels: sunburstData.labels,
+    parents: sunburstData.parents,
+    values: sunburstData.values,
+    branchvalues: "total",
+    marker: { colors: sunburstData.colors, line: { color: "#FFFFFF", width: 1.5 } },
+    text: sunburstData.display_texts,
+    hovertext: sunburstData.hover_text,
+    hoverinfo: "text",
+    textfont: { size: sunburstData.textfont_sizes, family: "Arial, sans-serif", color: sunburstData.textfont_colors },
+    textinfo: "text",
+    insidetextorientation: "radial"
+};
+
+console.log("Plotly version:", Plotly.version);
+console.log("Data labels:", sunburstData.labels.length);
+console.log("Data parents:", sunburstData.parents.length);
+console.log("Data values:", sunburstData.values.length);
+try {
+    Plotly.newPlot("sunburst-container", [trace], layout, {displayModeBar: false})
+        .then(function() { console.log("Sunburst rendered successfully"); })
+        .catch(function(err) { console.error("Plotly error:", err.message); });
+} catch(e) {
+    console.error("Plotly exception:", e.message);
+}
+
+document.getElementById("sunburst-container").on("plotly_click", function(data) {
+    var point = data.points[0];
+    var label = point.label;
+    var isRoot = (label === "Unicus Health<br>Packages");
+    var hasChildren = sunburstData.parents.some(function(p) { return p === label; });
+    if (isRoot || hasChildren) return;
+    var logoItems = document.querySelectorAll(".logo-item");
+    var found = false;
+    logoItems.forEach(function(item) {
+        item.classList.remove("highlighted");
+        if (item.dataset.entity === label) {
+            item.classList.add("highlighted");
+            item.scrollIntoView({behavior: "smooth", block: "center"});
+            showDetails(item);
+            found = true;
+        }
+    });
+    if (!found) document.getElementById("detailsPanel").classList.remove("show");
+});
+
+function highlightEntity(entityName) {
+    document.querySelectorAll(".logo-item").forEach(function(item) { item.classList.remove("highlighted"); });
+    var clickedItem = document.querySelector('[data-entity="' + entityName + '"]');
+    if (clickedItem) {
+        clickedItem.classList.add("highlighted");
+        showDetails(clickedItem);
+    }
+    var idx = sunburstData.labels.indexOf(entityName);
+    if (idx >= 0) {
+        try { Plotly.Fx.hover("sunburst-container", [{curveNumber: 0, pointNumber: idx}]); } catch(e) {}
+    }
+}
+
+function showDetails(logoItem) {
+    var entityName = logoItem.dataset.entity;
+    var category = logoItem.dataset.category;
+    var logoImg = logoItem.querySelector(".logo-img").src;
+    var entityData = null;
+    for (var i = 0; i < sunburstData.labels.length; i++) {
+        if (sunburstData.labels[i] === entityName) {
+            entityData = sunburstData.custom_data[i];
+            break;
+        }
+    }
+    if (entityData) {
+        document.getElementById("detailsIcon").src = logoImg;
+        document.getElementById("detailsName").textContent = entityName;
+        document.getElementById("detailsPrice").textContent = entityData.price ? "₹ " + parseInt(entityData.price).toLocaleString() : "";
+        var html = "<strong>Category:</strong> " + category + "<br>";
+        if (entityData.tests) html += "<strong>Test:</strong> " + entityData.tests + "<br>";
+        if (entityData.link) html += '<a href="' + entityData.link + '" target="_blank">Book Now →</a>';
+        document.getElementById("detailsInfo").innerHTML = html;
+        document.getElementById("detailsPanel").classList.add("show");
+    }
+}
+
+document.addEventListener("click", function(event) {
+    if (!event.target.closest(".details-panel") && !event.target.closest(".logo-item") && !event.target.closest(".js-plotly-plot")) {
+        document.getElementById("detailsPanel").classList.remove("show");
+    }
+});
+</script>
+</body>
+</html>
