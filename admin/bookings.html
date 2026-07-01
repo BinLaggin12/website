@@ -11,26 +11,47 @@
 <body>
 <div class="admin-header">
     <div class="brand">
-        <span>Unicus Diagnostics — Admin</span>
+        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics — Admin</a>
     </div>
     <div class="user-info">
         <span id="userDisplay"></span>
         <button onclick="logout()">Logout</button>
     </div>
 </div>
-<nav class="admin-nav">
+<div class="admin-layout">
+<nav class="admin-sidebar">
     <a href="dashboard.html">Dashboard</a>
-    <a href="bookings.html" class="active">Bookings</a>
+    <div class="sidebar-section">
+        <button class="sidebar-toggle active" onclick="toggleBookingsMenu(event)">Bookings ▾</button>
+        <div class="sidebar-submenu" id="bookingsMenu">
+            <a href="bookings.html">All Bookings</a>
+            <a href="bookings.html?status=pending">Incomplete</a>
+            <a href="bookings.html?status=completed">Complete</a>
+            <a href="bookings.html?status=confirmed">Pending Approval</a>
+            <a href="bookings.html?status=approved">Signed/Approved</a>
+            <a href="bookings.html?status=cancelled">Cancelled</a>
+        </div>
+    </div>
     <a href="reports.html">Reports</a>
     <a href="patients.html">Patients</a>
     <a href="tests.html">Tests</a>
     <a href="doctors.html">Doctors</a>
+    <div class="sidebar-spacer"></div>
+    <a href="#" class="sidebar-logout" onclick="logout()">Logout</a>
 </nav>
 <div class="admin-content">
     <div id="message"></div>
+    <div class="bookings-tabs" id="bookingsTabs">
+        <button class="booking-tab active" data-status="" onclick="selectTab('')">All Bookings <span class="tab-count" id="countAll"></span></button>
+        <button class="booking-tab" data-status="pending" onclick="selectTab('pending')">Incomplete <span class="tab-count" id="countPending"></span></button>
+        <button class="booking-tab" data-status="completed" onclick="selectTab('completed')">Complete <span class="tab-count" id="countCompleted"></span></button>
+        <button class="booking-tab" data-status="confirmed" onclick="selectTab('confirmed')">Pending Approval <span class="tab-count" id="countConfirmed"></span></button>
+        <button class="booking-tab" data-status="approved" onclick="selectTab('approved')">Signed/Approved <span class="tab-count" id="countApproved"></span></button>
+        <button class="booking-tab" data-status="cancelled" onclick="selectTab('cancelled')">Cancelled <span class="tab-count" id="countCancelled"></span></button>
+    </div>
     <div class="data-table-wrap">
         <div class="table-header">
-            <h2>All Bookings</h2>
+            <h2 id="sectionTitle">All Bookings</h2>
             <input type="text" id="searchInput" placeholder="Search by name or phone..." onkeyup="filterTable()">
         </div>
         <table class="data-table">
@@ -49,15 +70,17 @@
         </table>
     </div>
 </div>
+</div>
 <div class="modal-overlay" id="statusModal">
     <div class="modal-box">
         <h2>Update Booking Status</h2>
         <input type="hidden" id="editBookingId">
         <label>Status</label>
         <select id="editStatus">
-            <option value="confirmed">Confirmed</option>
-            <option value="pending">Pending</option>
-            <option value="completed">Completed</option>
+            <option value="pending">Incomplete</option>
+            <option value="completed">Complete</option>
+            <option value="confirmed">Pending Approval</option>
+            <option value="approved">Signed/Approved</option>
             <option value="cancelled">Cancelled</option>
         </select>
         <div class="modal-actions">
@@ -83,9 +106,44 @@
 requireAuth();
 document.getElementById('userDisplay').textContent = USERNAME || 'Admin';
 
+var statusLabels = {
+    pending: 'Incomplete',
+    completed: 'Complete',
+    confirmed: 'Pending Approval',
+    approved: 'Signed/Approved',
+    cancelled: 'Cancelled'
+};
+
+var currentFilter = getUrlParam('status') || '';
+
+function selectTab(status) {
+    currentFilter = status;
+    document.querySelectorAll('.booking-tab').forEach(function(tab) {
+        tab.classList.toggle('active', tab.dataset.status === status);
+    });
+    var label = status ? statusLabels[status] : 'All';
+    document.getElementById('sectionTitle').textContent = label + ' Bookings';
+    var url = status ? '?status=' + encodeURIComponent(status) : window.location.pathname;
+    history.pushState(null, '', url);
+    document.getElementById('searchInput').value = '';
+    updateSidebarActive(status);
+    loadBookings();
+}
+
+function updateSidebarActive(status) {
+    document.querySelectorAll('#bookingsMenu a').forEach(function(link) {
+        var href = link.getAttribute('href');
+        var linkStatus = href.indexOf('status=') > -1 ? href.split('status=')[1] : '';
+        link.classList.toggle('active', linkStatus === status);
+    });
+}
+
 function loadBookings() {
-    api('/bookings').then(function(bookings) {
-        // Fetch report status for all bookings in parallel to check PDF availability
+    api('/bookings?_=' + Date.now()).then(function(allBookings) {
+        var bookings = currentFilter
+            ? allBookings.filter(function(b) { return b.status === currentFilter; })
+            : allBookings;
+        updateCounts(allBookings);
         var reportPromises = bookings.map(function(b) {
             return fetch('/api/report/' + b.booking_id).then(function(r) {
                 if (r.ok) return r.json();
@@ -98,17 +156,18 @@ function loadBookings() {
             bookings.forEach(function(b, i) {
                 var report = reports[i];
                 var hasPdf = report && report.pdf_path;
+                var statusLabel = statusLabels[b.status] || b.status;
                 var statusClass = 'status-' + b.status;
                 var downloadBtn = hasPdf
                     ? '<a href="/api/admin/reports/' + b.booking_id + '/download" target="_blank" class="btn-download" style="margin-left:4px;padding:4px 10px;border-radius:4px;color:#fff;text-decoration:none;font-size:12px;background:#2e7d32;">PDF</a>'
                     : '';
                 tbody.innerHTML +=
-                    '<tr>' +
+                    '<tr data-booking-id="' + b.booking_id + '">' +
                     '<td>' + escapeHtml(b.patient_name) + '</td>' +
                     '<td>' + escapeHtml(b.patient_phone) + '</td>' +
                     '<td>' + escapeHtml(b.test_name) + '</td>' +
                     '<td>' + escapeHtml(b.collection_address) + '</td>' +
-                    '<td><span class="status ' + statusClass + '">' + escapeHtml(b.status) + '</span></td>' +
+                    '<td><span class="status ' + statusClass + '">' + escapeHtml(statusLabel) + '</span></td>' +
                     '<td>' + escapeHtml(b.created_at || '').substring(0, 10) + '</td>' +
                     '<td class="actions">' +
                     '<button class="btn-edit" onclick="openStatusModal(\'' + b.booking_id + '\', \'' + b.status + '\')">Status</button>' +
@@ -119,6 +178,23 @@ function loadBookings() {
             });
         });
     });
+}
+
+function updateCounts(allBookings) {
+    var counts = { pending: 0, completed: 0, confirmed: 0, approved: 0, cancelled: 0 };
+    allBookings.forEach(function(b) {
+        if (counts[b.status] !== undefined) counts[b.status]++;
+    });
+    document.getElementById('countAll').textContent = '(' + allBookings.length + ')';
+    document.getElementById('countPending').textContent = '(' + counts.pending + ')';
+    document.getElementById('countCompleted').textContent = '(' + counts.completed + ')';
+    document.getElementById('countConfirmed').textContent = '(' + counts.confirmed + ')';
+    document.getElementById('countApproved').textContent = '(' + counts.approved + ')';
+    document.getElementById('countCancelled').textContent = '(' + counts.cancelled + ')';
+}
+
+function refreshCounts() {
+    api('/bookings?_=' + Date.now()).then(updateCounts);
 }
 
 function filterTable() {
@@ -142,11 +218,26 @@ function closeModal(id) {
 
 function saveStatus() {
     var bookingId = document.getElementById('editBookingId').value;
-    var status = document.getElementById('editStatus').value;
-    api('/booking/' + bookingId + '/status', 'PUT', {status: status}).then(function() {
-        showMessage('Booking status updated');
+    var newStatus = document.getElementById('editStatus').value;
+    var newLabel = statusLabels[newStatus] || newStatus;
+    api('/booking/' + bookingId + '/status', 'PUT', {status: newStatus}).then(function(result) {
         closeModal('statusModal');
-        loadBookings();
+        var row = document.querySelector('#bookingsBody tr[data-booking-id="' + bookingId + '"]');
+        if (row) {
+            if (currentFilter && currentFilter !== newStatus) {
+                row.style.opacity = '0';
+                row.style.transition = 'opacity 0.3s';
+                setTimeout(function() { row.remove(); }, 300);
+            } else {
+                row.querySelector('.status').textContent = newLabel;
+                row.querySelector('.status').className = 'status status-' + newStatus;
+                row.querySelector('button.btn-edit').setAttribute('onclick', "openStatusModal('" + bookingId + "', '" + newStatus + "')");
+            }
+        }
+        refreshCounts();
+        showMessage('Status updated to ' + newLabel, 'success');
+    }).catch(function(err) {
+        showMessage('Status update failed: ' + err.message, 'error');
     });
 }
 
@@ -157,8 +248,6 @@ function openReportModal(bookingId, testName) {
     var fieldsDiv = document.getElementById('reportFormFields');
     fieldsDiv.innerHTML = '<p class="loading">Loading parameters...</p>';
     document.getElementById('reportModal').classList.add('show');
-
-    // Fetch parameter template for this test
     api('/tests/' + encodeURIComponent(testName) + '/parameters').then(function(params) {
         fieldsDiv.innerHTML = '';
         params.forEach(function(p) {
@@ -208,7 +297,7 @@ function logout() {
     });
 }
 
-loadBookings();
+selectTab(currentFilter);
 </script>
 </body>
 </html>

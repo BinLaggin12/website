@@ -106,12 +106,20 @@ def create_fastapi_app(database: Database) -> FastAPI:
     # --- Admin booking list & update ---
 
     @app.get("/api/admin/bookings")
-    def admin_list_bookings(_=Depends(require_admin)):
-        return database.list_all_bookings()
+    def admin_list_bookings(status: str = None, _=Depends(require_admin)):
+        bookings = database.list_all_bookings()
+        if status:
+            bookings = [b for b in bookings if b["status"] == status]
+        return bookings
 
     @app.put("/api/admin/booking/{booking_id}/status")
     def admin_update_booking_status(booking_id: str, body: AdminBookingStatusUpdate, _=Depends(require_admin)):
-        database.update_booking_status(booking_id, body.status)
+        try:
+            database.update_booking_status(booking_id, body.status)
+        except ValueError as e:
+            raise HTTPException(404, str(e))
+        except RuntimeError as e:
+            raise HTTPException(500, str(e))
         return {"status": "ok"}
 
     # --- Admin reports ---

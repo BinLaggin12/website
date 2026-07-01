@@ -9,6 +9,8 @@ body {
     background: #f4f7fb;
     color: #333;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Login page */
@@ -115,10 +117,12 @@ body {
     height: 36px;
 }
 
-.admin-header .brand span {
+.admin-header .brand a {
     font-weight: 700;
     color: #167ce9;
     font-size: 1.1em;
+    font-family: 'Merriweather', serif;
+    letter-spacing: 0.05em;
 }
 
 .admin-header .user-info {
@@ -144,41 +148,149 @@ body {
     background: #d32f2f;
 }
 
-.admin-nav {
-    background: #fff;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 0 24px;
+.admin-layout {
     display: flex;
-    gap: 4px;
+    flex: 1;
+}
+
+.admin-sidebar {
+    width: 240px;
+    background: #1e2a3a;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 12px 0;
+}
+
+.admin-sidebar a,
+.admin-sidebar .sidebar-toggle {
+    display: block;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: rgba(255,255,255,0.7);
+    font-size: 0.85em;
+    font-weight: 600;
+    line-height: 1.4;
+    transition: all 0.15s;
+    white-space: nowrap;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    text-align: left;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.admin-sidebar a:hover,
+.admin-sidebar .sidebar-toggle:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.08);
+}
+
+.admin-sidebar a.active {
+    color: #fff;
+    background: rgba(255,255,255,0.12);
+}
+
+.admin-sidebar .sidebar-toggle.active {
+    color: #fff;
+    background: rgba(255,255,255,0.12);
+}
+
+.admin-sidebar .sidebar-section {
+    width: 100%;
+}
+
+.admin-sidebar .sidebar-section .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.admin-sidebar .sidebar-submenu {
+    display: none;
+}
+
+.admin-sidebar .sidebar-submenu.show {
+    display: block;
+}
+
+.admin-sidebar .sidebar-submenu a {
+    padding: 8px 20px 8px 36px;
+    font-size: 0.8em;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+}
+
+.admin-sidebar .sidebar-submenu a:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.08);
+}
+
+.admin-sidebar .sidebar-submenu a.active {
+    color: #fff;
+    background: rgba(255,255,255,0.12);
+}
+
+.admin-sidebar .sidebar-spacer {
+    flex: 1;
+}
+
+.admin-sidebar .sidebar-logout {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: auto;
+}
+
+.admin-content {
+    flex: 1;
+    padding: 24px;
+    min-width: 0;
+}
+
+/* Bookings tabs */
+.bookings-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #e0e0e0;
     overflow-x: auto;
 }
 
-.admin-nav a {
-    display: block;
-    padding: 14px 20px;
-    text-decoration: none;
-    color: #666;
-    font-size: 0.85em;
+.booking-tab {
+    padding: 10px 18px;
+    font-size: 0.82em;
     font-weight: 600;
+    font-family: 'Merriweather', serif;
+    color: #666;
+    background: none;
+    border: none;
     border-bottom: 3px solid transparent;
-    transition: all 0.2s;
+    cursor: pointer;
     white-space: nowrap;
+    transition: all 0.2s;
+    margin-bottom: -2px;
 }
 
-.admin-nav a:hover {
+.booking-tab:hover {
     color: #167ce9;
     background: #f0f6ff;
 }
 
-.admin-nav a.active {
+.booking-tab.active {
     color: #167ce9;
     border-bottom-color: #167ce9;
 }
 
-.admin-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 24px;
+.booking-tab .tab-count {
+    font-size: 0.85em;
+    font-weight: 400;
+    color: #999;
+    margin-left: 4px;
+}
+
+.booking-tab.active .tab-count {
+    color: #167ce9;
 }
 
 /* Dashboard cards */
@@ -292,6 +404,11 @@ body {
 .status-cancelled {
     background: #fce4e4;
     color: #c62828;
+}
+
+.status-approved {
+    background: #e0f2f1;
+    color: #00695c;
 }
 
 .data-table .actions button {
@@ -455,12 +572,47 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
-    .admin-nav {
-        padding: 0 12px;
+    .admin-layout {
+        flex-direction: column;
     }
-    .admin-nav a {
-        padding: 12px 14px;
+    .admin-sidebar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 0;
+        min-height: auto;
+        overflow-x: auto;
+    }
+    .admin-sidebar a,
+    .admin-sidebar .sidebar-toggle {
+        padding: 10px 14px;
         font-size: 0.8em;
+        width: auto;
+        flex-shrink: 0;
+    }
+    .admin-sidebar .sidebar-section {
+        position: relative;
+    }
+    .admin-sidebar .sidebar-submenu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: #1e2a3a;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px;
+        min-width: 180px;
+        z-index: 200;
+        padding: 4px 0;
+    }
+    .admin-sidebar .sidebar-submenu a {
+        padding: 8px 16px 8px 16px;
+    }
+    .admin-sidebar .sidebar-spacer {
+        display: none;
+    }
+    .admin-sidebar .sidebar-logout {
+        border-top: none;
+        margin-top: 0;
     }
     .admin-content {
         padding: 16px;

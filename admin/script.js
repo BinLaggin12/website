@@ -15,6 +15,7 @@ function api(path, method, body) {
     var opts = {
         method: method || 'GET',
         headers: { 'Content-Type': 'application/json' },
+        cache: 'no-cache',
     };
     if (TOKEN) {
         opts.headers['Authorization'] = 'Bearer ' + TOKEN;
@@ -49,4 +50,20 @@ function escapeHtml(text) {
     var div = document.createElement('div');
     div.appendChild(document.createTextNode(text));
     return div.innerHTML;
+}
+
+function toggleBookingsMenu(event) {
+    event.stopPropagation();
+    var menu = document.getElementById('bookingsMenu');
+    menu.classList.toggle('show');
+}
+
+document.addEventListener('click', function() {
+    var menu = document.getElementById('bookingsMenu');
+    if (menu) menu.classList.remove('show');
+});
+
+function getUrlParam(name) {
+    var params = new URLSearchParams(window.location.search);
+    return params.get(name);
 }

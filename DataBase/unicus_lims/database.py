@@ -387,7 +387,7 @@ class Database:
     def create_booking(self, patient_id: str, patient_name: str, patient_phone: str, test_name: str, collection_address: str) -> Booking:
         booking_id = uuid.uuid4()
         now = datetime.utcnow()
-        status = "confirmed"
+        status = "pending"
         pid = uuid.UUID(patient_id)
         self.session.execute(self.prepared.booking_insert, [
             booking_id, pid, patient_name, patient_phone,
@@ -601,10 +601,51 @@ class Database:
 
     def update_booking_status(self, booking_id: str, status: str):
         bid = uuid.UUID(booking_id)
+        rows = self.session.execute(
+            "SELECT patient_phone, created_at FROM bookings WHERE booking_id = %s",
+            (bid,)
+        )
+        booking = None
+        for row in rows:
+            booking = row
+        if not booking:
+            raise ValueError("Booking not found")
+        phone = booking.patient_phone
+        created_at = booking.created_at
+        # Find the created_at in all_bookings using booking_id to ensure the WHERE clause matches
+        all_rows = self.session.execute(
+            "SELECT created_at FROM all_bookings WHERE partition = 0 AND booking_id = %s ALLOW FILTERING",
+            (bid,)
+        )
+        all_created_at = None
+        for row in all_rows:
+            all_created_at = row.created_at
+            break
+        if all_created_at is None:
+            raise RuntimeError("Booking not found in all_bookings")
         self.session.execute(
             "UPDATE bookings SET status = %s WHERE booking_id = %s",
             (status, bid)
         )
+        self.session.execute(
+            "UPDATE all_bookings SET status = %s WHERE partition = 0 AND created_at = %s AND booking_id = %s",
+            (status, all_created_at, bid)
+        )
+        self.session.execute(
+            "UPDATE bookings_by_phone SET status = %s WHERE phone = %s AND booking_id = %s",
+            (status, phone, bid)
+        )
+        verify = self.session.execute(
+            "SELECT status FROM all_bookings WHERE partition = 0 AND created_at = %s AND booking_id = %s",
+            (all_created_at, bid)
+        )
+        found = False
+        for row in verify:
+            found = True
+            if row.status != status:
+                raise RuntimeError("all_bookings status update failed to persist")
+        if not found:
+            raise RuntimeError("Booking not found in all_bookings after update")
 
     def update_test(self, test_id: str, name: str, price: float, description: str, category: str):
         tid = uuid.UUID(test_id)

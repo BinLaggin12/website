@@ -11,20 +11,33 @@
 <body>
 <div class="admin-header">
     <div class="brand">
-        <span>Unicus Diagnostics — Admin</span>
+        <a href="dashboard.html" style="text-decoration:none;">Unicus Diagnostics — Admin</a>
     </div>
     <div class="user-info">
         <span id="userDisplay"></span>
         <button onclick="logout()">Logout</button>
     </div>
 </div>
-<nav class="admin-nav">
+<div class="admin-layout">
+<nav class="admin-sidebar">
     <a href="dashboard.html">Dashboard</a>
-    <a href="bookings.html">Bookings</a>
+    <div class="sidebar-section">
+        <button class="sidebar-toggle" onclick="toggleBookingsMenu(event)">Bookings ▾</button>
+        <div class="sidebar-submenu" id="bookingsMenu">
+            <a href="bookings.html">All Bookings</a>
+            <a href="bookings.html?status=pending">Incomplete</a>
+            <a href="bookings.html?status=completed">Complete</a>
+            <a href="bookings.html?status=confirmed">Pending Approval</a>
+            <a href="bookings.html?status=approved">Signed/Approved</a>
+            <a href="bookings.html?status=cancelled">Cancelled</a>
+        </div>
+    </div>
     <a href="reports.html">Reports</a>
     <a href="patients.html">Patients</a>
     <a href="tests.html">Tests</a>
     <a href="doctors.html" class="active">Doctors</a>
+    <div class="sidebar-spacer"></div>
+    <a href="#" class="sidebar-logout" onclick="logout()">Logout</a>
 </nav>
 <div class="admin-content">
     <div id="message"></div>
@@ -44,6 +57,7 @@
             <tbody id="doctorsBody"></tbody>
         </table>
     </div>
+</div>
 </div>
 <div class="modal-overlay" id="doctorModal">
     <div class="modal-box">
