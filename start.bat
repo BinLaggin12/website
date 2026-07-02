@@ -2,22 +2,11 @@
 cd /d %~dp0
 echo === Unicus Diagnostics - Starting ===
 echo.
-echo Loading credentials from .env (if present)...
-REM Read .env file and set environment variables
-if exist .env (
-    for /f "usebackq tokens=*" %%a in (.env) do (
-        for /f "tokens=1,* delims==" %%b in ("%%a") do (
-            if not "%%b"=="" if not "%%b"=="# " if not "%%b"=="#" (
-                set "%%b=%%c"
-            )
-        )
-    )
-    echo Credentials loaded from .env
-) else (
+if not exist .env (
     echo WARNING: No .env file found. Using default credentials (not secure for production).
     echo Copy .env.example to .env and edit with your own passwords.
+    echo.
 )
-echo.
 echo Step 1: Starting Cassandra (Docker)...
 docker compose -f DataBase\docker-compose.unicus.yml up -d cassandra
 if %errorlevel% neq 0 (
@@ -33,12 +22,15 @@ docker ps --filter name=unicus-cassandra --format "{{.Status}}" | findstr "(heal
 if errorlevel 1 goto wait_loop
 echo Cassandra is healthy!
 echo.
-echo Step 3: Starting Unicus Backend...
+echo Step 3: Installing dependencies...
 cd DataBase
-pip install -r requirements.txt >nul 2>&1
-python -m unicus_lims
+pip install -r requirements.txt
 if %errorlevel% neq 0 (
-    echo [ERROR] Python or dependencies missing. Install Python 3.10+ from python.org
+    echo [ERROR] pip install failed. Check that Python 3.10+ and pip are installed.
     pause
+    exit /b 1
 )
+echo.
+echo Step 4: Starting Unicus Backend...
+python -m unicus_lims
 pause
