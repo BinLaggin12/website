@@ -28,7 +28,7 @@
             <a href="bookings.html?status=pending">Incomplete</a>
             <a href="bookings.html?status=completed">Complete</a>
             <a href="bookings.html?status=confirmed">Pending Approval</a>
-            <a href="bookings.html?status=approved">Signed/Approved</a>
+            <a href="bookings.html?status=approved">Approved</a>
             <a href="bookings.html?status=cancelled">Cancelled</a>
         </div>
     </div>
@@ -46,7 +46,7 @@
         <button class="booking-tab" data-status="pending" onclick="selectTab('pending')">Incomplete <span class="tab-count" id="countPending"></span></button>
         <button class="booking-tab" data-status="completed" onclick="selectTab('completed')">Complete <span class="tab-count" id="countCompleted"></span></button>
         <button class="booking-tab" data-status="confirmed" onclick="selectTab('confirmed')">Pending Approval <span class="tab-count" id="countConfirmed"></span></button>
-        <button class="booking-tab" data-status="approved" onclick="selectTab('approved')">Signed/Approved <span class="tab-count" id="countApproved"></span></button>
+        <button class="booking-tab" data-status="approved" onclick="selectTab('approved')">Approved <span class="tab-count" id="countApproved"></span></button>
         <button class="booking-tab" data-status="cancelled" onclick="selectTab('cancelled')">Cancelled <span class="tab-count" id="countCancelled"></span></button>
     </div>
     <div class="data-table-wrap">
@@ -80,7 +80,7 @@
             <option value="pending">Incomplete</option>
             <option value="completed">Complete</option>
             <option value="confirmed">Pending Approval</option>
-            <option value="approved">Signed/Approved</option>
+            <option value="approved">Approved</option>
             <option value="cancelled">Cancelled</option>
         </select>
         <div class="modal-actions">
@@ -113,7 +113,7 @@ var statusLabels = {
     pending: 'Incomplete',
     completed: 'Complete',
     confirmed: 'Pending Approval',
-    approved: 'Signed/Approved',
+    approved: 'Approved',
     cancelled: 'Cancelled'
 };
 
