@@ -2,6 +2,22 @@
 cd /d %~dp0
 echo === Unicus Diagnostics - Starting ===
 echo.
+echo Loading credentials from .env (if present)...
+REM Read .env file and set environment variables
+if exist .env (
+    for /f "usebackq tokens=*" %%a in (.env) do (
+        for /f "tokens=1,* delims==" %%b in ("%%a") do (
+            if not "%%b"=="" if not "%%b"=="# " if not "%%b"=="#" (
+                set "%%b=%%c"
+            )
+        )
+    )
+    echo Credentials loaded from .env
+) else (
+    echo WARNING: No .env file found. Using default credentials (not secure for production).
+    echo Copy .env.example to .env and edit with your own passwords.
+)
+echo.
 echo Step 1: Starting Cassandra (Docker)...
 docker compose -f DataBase\docker-compose.unicus.yml up -d cassandra
 if %errorlevel% neq 0 (

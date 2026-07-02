@@ -1,14 +1,27 @@
 import hashlib
 import os
-
+import sys
 from pathlib import Path
 
-DEFAULT_ADMIN_USER = "admin"
-DEFAULT_ADMIN_PASS = "admin123"
-OWNER_USER = "owner"
-OWNER_PASS = "owner123"
+from dotenv import load_dotenv
 
-# Ensure the generated_reports directory exists
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
+
+DEFAULT_ADMIN_USER = os.environ.get("ADMIN_USER") or "admin"
+DEFAULT_ADMIN_PASS = os.environ.get("ADMIN_PASS") or "admin123"
+OWNER_USER = os.environ.get("OWNER_USER") or "owner"
+OWNER_PASS = os.environ.get("OWNER_PASS") or "owner123"
+
+if not os.environ.get("ADMIN_USER"):
+    print("WARNING: ADMIN_USER not set in .env or environment. Using default 'admin'.")
+if not os.environ.get("ADMIN_PASS"):
+    print("WARNING: ADMIN_PASS not set in .env or environment. Using default 'admin123'.")
+if not os.environ.get("OWNER_USER"):
+    print("WARNING: OWNER_USER not set in .env or environment. Using default 'owner'.")
+if not os.environ.get("OWNER_PASS"):
+    print("WARNING: OWNER_PASS not set in .env or environment. Using default 'owner123'.")
+
 HERE = Path(__file__).resolve().parent
 REPORTS_DIR = HERE / "generated_reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
